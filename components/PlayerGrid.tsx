@@ -1,4 +1,4 @@
-import { Shirt, Goal, Users } from 'lucide-react'
+
 
 interface PlayerCard {
   id: number
