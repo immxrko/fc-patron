@@ -4,7 +4,11 @@ import { motion } from 'framer-motion'
 import { socialIcons } from '../../lib/social-icons'
 
 export default function SocialLinks() {
-  const platforms = ['youtube', 'instagram', 'tiktok'] as const
+  const socialLinks = [
+    { platform: 'youtube', url: 'https://www.youtube.com/@patronwien' },
+    { platform: 'instagram', url: 'https://www.instagram.com/fcpatronwien' },
+    { platform: 'tiktok', url: 'https://www.tiktok.com/@fcpatronwien' }
+  ] as const
   
   return (
     <motion.div 
@@ -13,10 +17,10 @@ export default function SocialLinks() {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.7 }}
     >
-      {platforms.map((platform) => (
+      {socialLinks.map(({ platform, url }) => (
         <a 
           key={platform}
-          href={`https://${platform}.com/@fcpatron`}
+          href={url}
           target="_blank" 
           rel="noopener noreferrer"
           className="group flex items-center justify-center md:justify-start gap-3 px-5 py-3 bg-black/20 

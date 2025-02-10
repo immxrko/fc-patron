@@ -52,7 +52,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: "-100%" }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="h-[calc(100vh-2rem)] overflow-y-auto pt-20 scrollbar-thin scrollbar-track-transparent 
+              className="h-[calc(100vh-2rem)] overflow-y-auto pt-0 md:pt-20 scrollbar-thin scrollbar-track-transparent 
                 scrollbar-thumb-red-500/20 hover:scrollbar-thumb-red-500/30"
             >
               <TrialForm onBack={() => setShowTrialForm(false)} />
