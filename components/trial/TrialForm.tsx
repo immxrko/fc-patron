@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import { useState, FormEvent } from 'react'
 import { Calendar } from 'lucide-react'
-import { format, addMonths, eachDayOfInterval,  isTuesday, isBefore, startOfToday } from 'date-fns'
+import { format, addMonths, eachDayOfInterval, isTuesday, isBefore, startOfToday } from 'date-fns'
 
 interface TrialFormProps {
   onBack: () => void
@@ -75,7 +75,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
         transition={{ delay: 0.2 }}
       >
         <h2 className="text-3xl font-bold text-white">Book Your Trial Training</h2>
-        <p className="text-white/80 hidden md:block">Fill out the form below and we'll get back to you shortly.</p>
+        <p className="text-white/80 hidden md:block">Fill out the form below and we&apos;ll get back to you shortly.</p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
