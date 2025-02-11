@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion'
 import { Check, Calendar, ArrowLeft } from 'lucide-react'
-import { format, addHours } from 'date-fns'
+import { format } from 'date-fns'
 
 interface SubmissionSuccessProps {
   selectedDate: Date

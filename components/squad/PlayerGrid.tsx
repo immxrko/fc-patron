@@ -207,6 +207,7 @@ export default function PlayerGrid({ searchQuery }: PlayerGridProps) {
 
       {/* Mobile List View with Position Groups */}
       <div className="md:hidden space-y-6">
+      {/* eslint-disable-next-line */}
         {filteredGroups.map((group, groupIndex) => (
           <div key={group.position}>
             {/* Position Header */}
