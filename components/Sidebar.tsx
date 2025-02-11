@@ -14,7 +14,7 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="fixed left-0 top-0 h-screen w-20 bg-black/40 backdrop-blur-sm border-r border-white/10 flex flex-col items-center py-8">
+    <div className="fixed left-0 top-0 h-screen w-20 bg-black/40 backdrop-blur-sm border-r border-white/10 flex-col items-center py-8 md:flex z-50">
       <div className="mb-8">
         <img
           src="https://www.oefb.at/oefb2/images/1278650591628556536_a80345e52fc58947d7af-1,0-320x320.png"

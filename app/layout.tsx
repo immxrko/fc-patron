@@ -1,12 +1,13 @@
-import './globals.css'
+import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
-import Sidebar from '@/components/Sidebar'
+import './globals.css'
+import ClientLayout from '../components/ClientLayout'
 
 const inter = Inter({ subsets: ['latin'] })
 
-export const metadata = {
-  title: 'FC Patron Dashboard',
-  description: 'Team Performance Dashboard',
+export const metadata: Metadata = {
+  title: 'FC Patron',
+  description: 'Football Club Management System',
 }
 
 export default function RootLayout({
@@ -16,11 +17,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} min-h-screen bg-black`}>
-        <Sidebar />
-        <div className="ml-20">
+      <body className={`${inter.className} h-[100dvh] overflow-hidden`}>
+        <ClientLayout>
           {children}
-        </div>
+        </ClientLayout>
       </body>
     </html>
   )
