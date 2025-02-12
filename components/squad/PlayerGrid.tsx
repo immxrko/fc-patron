@@ -135,7 +135,7 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
     }
 
     fetchPlayers()
-  }, [selectedTeam, selectedSeason])
+  }, [selectedTeam, selectedSeason, seasonToPrefix])
 
   // Group and sort players by position
   const positionOrder = ['GK', 'DEF', 'MID', 'ATT']
