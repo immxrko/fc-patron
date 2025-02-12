@@ -55,9 +55,9 @@ export default function Sidebar() {
           <CalendarDays className="w-6 h-6" />
         </Link>
         <Link 
-          href="/standings"
+          href="/records"
           className={`p-3 rounded-xl transition-colors duration-200 
-            ${isActive('/standings') 
+            ${isActive('/records') 
               ? 'bg-red-500/20 text-red-400' 
               : 'text-gray-400 hover:text-white hover:bg-white/5'
             }`}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
 
@@ -25,13 +25,13 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Map season to column prefixes
-  const seasonToPrefix = {
+  // Wrap seasonToPrefix in useMemo
+  const seasonToPrefix = useMemo(() => ({
     '2021/22': '21',
     '2022/23': '22',
     '2023/24': '23',
     '2024/25': '24'
-  }
+  }), [])  // Empty dependency array since this object never changes
 
   // Get stats based on season and team
   // eslint-disable-next-line

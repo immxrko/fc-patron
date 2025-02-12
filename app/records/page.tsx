@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import NextMatch from '@/components/schedule/NextMatch'
-import HeadToHead from '@/components/schedule/HeadToHead'
+import TeamStats from '@/components/records/TeamStats'
+import PlayerRecords from '@/components/records/PlayerRecords'
+import SeasonalAchievements from '@/components/records/SeasonalAchievements'
+import HistoricalMilestones from '@/components/records/HistoricalMilestones'
 
-export default function Schedule() {
-  const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
+export default function Records() {
   const [isClient, setIsClient] = useState(false)
 
   useEffect(() => {
@@ -37,15 +38,6 @@ export default function Schedule() {
     }
   }
 
-  // Fixed positions for particles
-  const particlePositions = [
-    { left: '10%', top: '20%' },
-    { left: '90%', top: '30%' },
-    { left: '50%', top: '60%' },
-    { left: '80%', top: '10%' },
-    { left: '20%', top: '90%' },
-  ]
-
   return (
     <motion.main
       initial="hidden"
@@ -63,11 +55,14 @@ export default function Schedule() {
         <AnimatePresence>
           {isClient && (
             <div className="absolute inset-0">
-              {particlePositions.map((pos, i) => (
+              {[...Array(5)].map((_, i) => (
                 <motion.div
                   key={i}
                   className="absolute w-2 h-2 bg-red-500/20 rounded-full"
-                  style={pos}
+                  style={{
+                    left: `${20 + i * 15}%`,
+                    top: `${30 + i * 10}%`
+                  }}
                   animate={{
                     y: [0, -20, 0],
                     opacity: [0.2, 0.5, 0.2],
@@ -85,20 +80,26 @@ export default function Schedule() {
         </AnimatePresence>
       </div>
 
-      <div className="relative w-full max-w-6xl mx-auto">
+      <div className="relative w-full max-w-7xl mx-auto">
         <motion.div 
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           variants={itemVariants}
         >
-          <div className="lg:col-span-2">
+          <div className="space-y-6">
             <motion.div variants={itemVariants}>
-              <NextMatch onOpponentSelect={setSelectedOpponent} />
+              <TeamStats />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <PlayerRecords />
             </motion.div>
           </div>
           
-          <div>
+          <div className="space-y-6">
             <motion.div variants={itemVariants}>
-              <HeadToHead opponent={selectedOpponent} />
+              <SeasonalAchievements />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <HistoricalMilestones />
             </motion.div>
           </div>
         </motion.div>
