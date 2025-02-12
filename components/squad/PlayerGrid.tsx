@@ -10,55 +10,140 @@ interface Player {
   Name: string
   Position: string
   BildURL: string
-  Gesamt_Total_S: number
-  Gesamt_Total_T: number
-  Gesamt_Total_A: number
+  KM_Res_Beides: string
+  // eslint-disable-next-line
+  [key: string]: any  // This allows for dynamic season-based stat fields
 }
 
 interface PlayerGridProps {
   searchQuery: string;
+  selectedTeam: 'first-team' | 'u23';
+  selectedSeason: string;
 }
 
-export default function PlayerGrid({ searchQuery }: PlayerGridProps) {
+export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }: PlayerGridProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
 
+  // Map season to column prefixes
+  const seasonToPrefix = {
+    '2021/22': '21',
+    '2022/23': '22',
+    '2023/24': '23',
+    '2024/25': '24'
+  }
+
+  // Get stats based on season and team
+  // eslint-disable-next-line
+  const getPlayerStats = (player: any) => {
+    if (selectedSeason === 'All Seasons') {
+      if (selectedTeam === 'first-team') {
+        return {
+          games: player.Gesamt_Total_S || 0,
+          goals: player.Gesamt_Total_T || 0,
+          assists: player.Gesamt_Total_A || 0
+        }
+      } else {
+        return {
+          games: player.Reserve_Total_S || 0,
+          goals: player.Reserve_Total_T || 0,
+          assists: player.Reserve_Total_A || 0
+        }
+      }
+    }
+
+    const prefix = seasonToPrefix[selectedSeason as keyof typeof seasonToPrefix]
+    if (selectedTeam === 'first-team') {
+      return {
+        games: player[`KM_${prefix}_S`] || 0,
+        goals: player[`KM_${prefix}_T`] || 0,
+        assists: player[`KM_${prefix}_A`] || 0
+      }
+    } else {
+      return {
+        games: player[`Reserve_${prefix}_S`] || 0,
+        goals: player[`Reserve_${prefix}_T`] || 0,
+        assists: player[`Reserve_${prefix}_A`] || 0
+      }
+    }
+  }
+
+  // Add this helper function at the top of the component
+  const getLastName = (fullName: string) => {
+    // Find the word that's in all caps
+    const nameParts = fullName.split(' ')
+    const capsName = nameParts.find(part => part === part.toUpperCase())
+    return capsName || nameParts.pop() || ''
+  }
+
   useEffect(() => {
     async function fetchPlayers() {
-      console.log('🔄 Starting fetch from table: players')
-      
-      const { data, error } = await supabase
-      .from('players')
-      .select(`
+      const baseColumns = `
         "ID",
         "isActive",
         "Name",
         "Position",
         "BildURL",
+        "KM_Res_Beides"
+      `
+
+      const totalColumns = `
         "Gesamt_Total_S",
         "Gesamt_Total_T",
-        "Gesamt_Total_A"
-      `)
-      .eq("isActive", true)
+        "Gesamt_Total_A",
+        "Reserve_Total_S",
+        "Reserve_Total_T",
+        "Reserve_Total_A"
+      `
+
+      let columns = baseColumns
+      if (selectedSeason === 'All Seasons') {
+        columns += `, ${totalColumns}`
+      } else {
+        const prefix = seasonToPrefix[selectedSeason as keyof typeof seasonToPrefix]
+        columns += `, 
+          "KM_${prefix}_S",
+          "KM_${prefix}_T",
+          "KM_${prefix}_A",
+          "Reserve_${prefix}_S",
+          "Reserve_${prefix}_T",
+          "Reserve_${prefix}_A"
+        `
+      }
+
+      const { data, error } = await supabase
+        .from('players')
+        .select(columns)
+         // eslint-disable-next-line
+        .eq("isActive", true) as { data: Player[] | null, error: any }
     
-      
       if (error) {
-        console.error('🔴 Error fetching players:', error)
+        console.error('Error fetching players:', error)
         return
       }
 
-      setPlayers(data || [])
+      const filteredData = data?.filter(player => {
+        if (selectedTeam === 'first-team') {
+          return player.KM_Res_Beides === 'KM' || player.KM_Res_Beides === 'BEIDES'
+        } else {
+          return player.KM_Res_Beides === 'RES' || player.KM_Res_Beides === 'BEIDES'
+        }
+      })
+
+      setPlayers(filteredData || [])
       setLoading(false)
     }
 
     fetchPlayers()
-  }, [])
+  }, [selectedTeam, selectedSeason])
 
   // Group and sort players by position
   const positionOrder = ['GK', 'DEF', 'MID', 'ATT']
   const groupedPlayers = positionOrder.map(pos => ({
     position: pos,
-    players: players.filter(p => p.Position === pos)
+    players: players
+      .filter(p => p.Position === pos)
+      .sort((a, b) => getLastName(a.Name).localeCompare(getLastName(b.Name)))
   })).filter(group => group.players.length > 0)
 
   const filteredGroups = groupedPlayers.map(group => ({
@@ -119,21 +204,21 @@ export default function PlayerGrid({ searchQuery }: PlayerGridProps) {
                 <div className="absolute bottom-6 inset-x-0 px-6">
                   <div className="flex justify-between items-center bg-black/40 backdrop-blur-md rounded-xl p-3">
                     <div className="flex flex-col items-center">
-                      <span className="text-2xl font-bold text-white">{player.Gesamt_Total_S}</span>
+                      <span className="text-2xl font-bold text-white">{getPlayerStats(player).games}</span>
                       <span className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Games</span>
                     </div>
 
                     <div className="h-8 w-[1px] bg-white/10" />
 
                     <div className="flex flex-col items-center">
-                      <span className="text-2xl font-bold text-white">{player.Gesamt_Total_T}</span>
+                      <span className="text-2xl font-bold text-white">{getPlayerStats(player).goals}</span>
                       <span className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Goals</span>
                     </div>
 
                     <div className="h-8 w-[1px] bg-white/10" />
 
                     <div className="flex flex-col items-center">
-                      <span className="text-2xl font-bold text-white">{player.Gesamt_Total_A}</span>
+                      <span className="text-2xl font-bold text-white">{getPlayerStats(player).assists}</span>
                       <span className="text-[10px] uppercase tracking-wider text-gray-400 mt-1">Assists</span>
                     </div>
                   </div>
@@ -188,17 +273,17 @@ export default function PlayerGrid({ searchQuery }: PlayerGridProps) {
 
                     <div className="flex items-center gap-4 mt-1">
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-semibold text-white">{player.Gesamt_Total_S}</span>
+                        <span className="text-sm font-semibold text-white">{getPlayerStats(player).games}</span>
                         <span className="text-xs text-gray-400">Games</span>
                       </div>
                       <div className="w-[1px] h-3 bg-white/10" />
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-semibold text-white">{player.Gesamt_Total_T}</span>
+                        <span className="text-sm font-semibold text-white">{getPlayerStats(player).goals}</span>
                         <span className="text-xs text-gray-400">Goals</span>
                       </div>
                       <div className="w-[1px] h-3 bg-white/10" />
                       <div className="flex items-center gap-1">
-                        <span className="text-sm font-semibold text-white">{player.Gesamt_Total_A}</span>
+                        <span className="text-sm font-semibold text-white">{getPlayerStats(player).assists}</span>
                         <span className="text-xs text-gray-400">Assists</span>
                       </div>
                     </div>

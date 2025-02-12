@@ -11,6 +11,8 @@ export default function Squad() {
   const [searchQuery, setSearchQuery] = useState('')
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [selectedTeam, setSelectedTeam] = useState<'first-team' | 'u23'>('first-team')
+  const [selectedSeason, setSelectedSeason] = useState('2024/25')
 
   // Fixed positions for particles
   const particlePositions = [
@@ -59,7 +61,7 @@ export default function Squad() {
       {/* Desktop Layout */}
       <div className="hidden md:block container mx-auto p-8">
         <motion.div variants={itemVariants}>
-          <TeamHeader />
+          <TeamHeader onSeasonChange={setSelectedSeason} />
         </motion.div>
         
         <motion.div 
@@ -67,7 +69,7 @@ export default function Squad() {
           className="flex gap-6 mb-8 items-center justify-between"
         >
           <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
-            <TeamSelector />
+            <TeamSelector onTeamChange={setSelectedTeam} />
           </motion.div>
           <motion.div variants={itemVariants} className="w-96" whileHover={{ scale: 1.02 }}>
             <SearchBar onSearch={setSearchQuery} />
@@ -75,7 +77,11 @@ export default function Squad() {
         </motion.div>
 
         <motion.div variants={itemVariants}>
-          <PlayerGrid searchQuery={searchQuery} />
+          <PlayerGrid 
+            searchQuery={searchQuery} 
+            selectedTeam={selectedTeam}
+            selectedSeason={selectedSeason}
+          />
         </motion.div>
       </div>
 
@@ -83,14 +89,14 @@ export default function Squad() {
       <div className="md:hidden">
         {/* Sticky Header Section */}
         <div className="sticky top-0 z-30 bg-black/95">
-          <TeamHeader />
+          <TeamHeader onSeasonChange={setSelectedSeason} />
           <div className="px-4 pb-4">
             <div className="flex items-center justify-between gap-4">
               <motion.div 
                 className="flex-1"
                 animate={{ opacity: isSearchOpen ? 0 : 1, width: isSearchOpen ? 0 : 'auto' }}
               >
-                <TeamSelector />
+                <TeamSelector onTeamChange={setSelectedTeam} />
               </motion.div>
               
               <motion.div 
@@ -147,7 +153,11 @@ export default function Squad() {
 
         {/* Players Grid */}
         <div className="px-4 py-4 pb-24">
-          <PlayerGrid searchQuery={searchQuery} />
+          <PlayerGrid 
+            searchQuery={searchQuery} 
+            selectedTeam={selectedTeam}
+            selectedSeason={selectedSeason}
+          />
         </div>
       </div>
 

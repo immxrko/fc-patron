@@ -1,10 +1,20 @@
 import { Trophy, ChevronDown } from 'lucide-react'
 import { useState } from 'react'
 
-export default function TeamHeader() {
+interface TeamHeaderProps {
+  onSeasonChange: (season: string) => void;
+}
+
+export default function TeamHeader({ onSeasonChange }: TeamHeaderProps) {
   const [isOpen, setIsOpen] = useState(false)
-  const seasons = ['2024/25', '2023/24', '2022/23', '2021/22']
-  const [selectedSeason, setSelectedSeason] = useState(seasons[0])
+  const seasons = ['All Seasons', '2024/25', '2023/24', '2022/23', '2021/22']
+  const [selectedSeason, setSelectedSeason] = useState('2024/25')
+
+  const handleSeasonChange = (season: string) => {
+    setSelectedSeason(season)
+    setIsOpen(false)
+    onSeasonChange(season)
+  }
 
   return (
     <div className="mb-4 md:mb-12">
@@ -36,10 +46,7 @@ export default function TeamHeader() {
                       {seasons.map((season) => (
                         <button
                           key={season}
-                          onClick={() => {
-                            setSelectedSeason(season)
-                            setIsOpen(false)
-                          }}
+                          onClick={() => handleSeasonChange(season)}
                           className={`w-full px-3 py-1.5 text-left text-sm transition-colors duration-200
                             ${selectedSeason === season 
                               ? 'text-red-400 bg-white/5' 

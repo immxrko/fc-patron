@@ -1,13 +1,22 @@
 import { Users, UserCircle } from 'lucide-react'
 import { useState } from 'react'
 
-export default function TeamSelector() {
-  const [selectedTeam, setSelectedTeam] = useState('first-team')
+interface TeamSelectorProps {
+  onTeamChange: (team: 'first-team' | 'u23') => void;
+}
+
+export default function TeamSelector({ onTeamChange }: TeamSelectorProps) {
+  const [selectedTeam, setSelectedTeam] = useState<'first-team' | 'u23'>('first-team')
+
+  const handleTeamChange = (team: 'first-team' | 'u23') => {
+    setSelectedTeam(team)
+    onTeamChange(team)
+  }
 
   return (
     <div className="inline-flex p-1 bg-black/40 backdrop-blur-md rounded-2xl">
       <button 
-        onClick={() => setSelectedTeam('first-team')}
+        onClick={() => handleTeamChange('first-team')}
         className={`relative group flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-500
           ${selectedTeam === 'first-team' 
             ? 'bg-gradient-to-r from-red-500/20 via-red-400/20 to-red-500/20 shadow-lg shadow-red-500/20' 
@@ -30,7 +39,7 @@ export default function TeamSelector() {
       </button>
 
       <button 
-        onClick={() => setSelectedTeam('u23')}
+        onClick={() => handleTeamChange('u23')}
         className={`relative group flex items-center gap-2 px-4 py-2 rounded-xl transition-all duration-500
           ${selectedTeam === 'u23' 
             ? 'bg-gradient-to-r from-red-500/20 via-red-400/20 to-red-500/20 shadow-lg shadow-red-500/20' 
