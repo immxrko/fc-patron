@@ -6,11 +6,12 @@ export default {
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
-        foreground: "var(--foreground)",
+        background: "rgb(0, 0, 0)",  // Force black background
+        foreground: "rgb(255, 255, 255)",  // Force white text
       },
     },
   },

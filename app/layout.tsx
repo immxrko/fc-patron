@@ -16,8 +16,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} h-[100dvh] overflow-hidden`}>
+    <html lang="en" style={{ backgroundColor: 'black', color: 'white' }}>
+      <body className={`${inter.className} h-[100dvh] overflow-hidden`} style={{ backgroundColor: 'black', color: 'white' }}>
         <ClientLayout>
           {children}
         </ClientLayout>

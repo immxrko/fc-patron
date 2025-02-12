@@ -43,7 +43,7 @@ export default function HeroSection({ onTrialClick }: HeroSectionProps) {
           </motion.h1>
 
           <motion.h2
-            className="text-lg md:text-xl font-medium text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-gray-200 to-[#FFD700]"
+            className="text-lg md:text-xl font-medium text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-gray-200 to-[#FFD700] w-fit mx-auto md:mx-0"
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.6 }}
