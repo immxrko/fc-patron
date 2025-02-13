@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     try {
+      // eslint-disable-next-line
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
