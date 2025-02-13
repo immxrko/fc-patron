@@ -7,11 +7,10 @@ import { supabase } from '@/lib/supabase'
 export default function LoginScreen() {
   const handleGoogleLogin = async () => {
     try {
-      // eslint-disable-next-line
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/admin`
+          redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/admin` || `${window.location.origin}/admin`
         }
       })
       
