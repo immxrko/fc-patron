@@ -11,7 +11,7 @@ export default function LoginScreen() {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `https://team-patron.com/admin`
+          redirectTo: `${window.location.origin}/admin`
         }
       })
       
