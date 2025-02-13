@@ -1,11 +1,38 @@
 'use client'
 
-import { Home, Users, Trophy, CalendarDays, Settings, LogOut } from 'lucide-react'
+import { Home, Users, Trophy, CalendarDays, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function MobileMenuBar() {
   const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    checkAdmin()
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAdmin()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const checkAdmin = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('id', session.user.id)
+        .single()
+      setIsAdmin(!!adminData)
+    } else {
+      setIsAdmin(false)
+    }
+  }
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true
@@ -57,12 +84,19 @@ export default function MobileMenuBar() {
           >
             <Trophy className="w-6 h-6" />
           </Link>
-          <button className="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 min-w-[48px] flex items-center justify-center">
-            <Settings className="w-6 h-6" />
-          </button>
-          <button className="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300 min-w-[48px] flex items-center justify-center">
-            <LogOut className="w-6 h-6" />
-          </button>
+       
+          {isAdmin && (
+            <Link 
+              href="/admin"
+              className={`p-3 rounded-xl transition-colors duration-200 min-w-[48px] flex items-center justify-center
+                ${isActive('/admin') 
+                  ? 'bg-red-500/20 text-red-400' 
+                  : 'text-gray-400 hover:text-white hover:bg-white/5'
+                }`}
+            >
+              <LogIn className="w-6 h-6" />
+            </Link>
+          )}
         </div>
       </nav>
     </div>

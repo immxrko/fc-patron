@@ -1,11 +1,38 @@
 'use client'
 
-import { Home, Users, Trophy, CalendarDays, Settings, LogOut } from 'lucide-react'
+import { Home, Users, Trophy, CalendarDays, LogIn } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 export default function Sidebar() {
   const pathname = usePathname()
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    checkAdmin()
+    
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAdmin()
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  const checkAdmin = async () => {
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user) {
+      const { data: adminData } = await supabase
+        .from('admins')
+        .select('id')
+        .eq('id', session.user.id)
+        .single()
+      setIsAdmin(!!adminData)
+    } else {
+      setIsAdmin(false)
+    }
+  }
 
   const isActive = (path: string) => {
     if (path === '/' && pathname === '/') return true
@@ -67,12 +94,18 @@ export default function Sidebar() {
       </nav>
 
       <div className="flex flex-col items-center gap-4">
-        <button className="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">
-          <Settings className="w-6 h-6" />
-        </button>
-        <button className="p-3 rounded-xl text-gray-400 hover:text-white hover:bg-white/10 transition-all duration-300">
-          <LogOut className="w-6 h-6" />
-        </button>
+        {isAdmin && (
+          <Link 
+            href="/admin"
+            className={`p-3 rounded-xl transition-colors duration-200 
+              ${isActive('/admin') 
+                ? 'bg-red-500/20 text-red-400' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+          >
+            <LogIn className="w-6 h-6" />
+          </Link>
+        )}
       </div>
     </div>
   )

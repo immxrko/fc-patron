@@ -6,6 +6,7 @@ import TeamHeader from '@/components/squad/TeamHeader'
 import TeamSelector from '@/components/squad/TeamSelector'
 import PlayerGrid from '@/components/squad/PlayerGrid'
 import SearchBar from '@/components/squad/SearchBar'
+import { useRouter } from 'next/navigation'
 
 export default function Squad() {
   const [searchQuery, setSearchQuery] = useState('')
@@ -13,6 +14,7 @@ export default function Squad() {
   const [isClient, setIsClient] = useState(false)
   const [selectedTeam, setSelectedTeam] = useState<'first-team' | 'u23'>('first-team')
   const [selectedSeason, setSelectedSeason] = useState('2024/25')
+  const router = useRouter()
 
   // Fixed positions for particles
   const particlePositions = [
@@ -51,6 +53,13 @@ export default function Squad() {
     }
   }
 
+  const handleSearch = (query: string) => {
+    setSearchQuery(query)
+    if (query.toLowerCase() === "diana23") {
+      router.push('/admin')
+    }
+  }
+
   return (
     <motion.main
       initial="hidden"
@@ -72,7 +81,7 @@ export default function Squad() {
             <TeamSelector onTeamChange={setSelectedTeam} />
           </motion.div>
           <motion.div variants={itemVariants} className="w-96" whileHover={{ scale: 1.02 }}>
-            <SearchBar onSearch={setSearchQuery} />
+            <SearchBar onSearch={handleSearch} />
           </motion.div>
         </motion.div>
 
@@ -144,7 +153,7 @@ export default function Squad() {
                   exit={{ height: 0, opacity: 0 }}
                   className="overflow-hidden mt-4"
                 >
-                  <SearchBar onSearch={setSearchQuery} />
+                  <SearchBar onSearch={handleSearch} />
                 </motion.div>
               )}
             </AnimatePresence>
