@@ -100,21 +100,21 @@ export default function ManagePlayers({
     
     setLoading(true)
     try {
-      if (isAddingNew) {
-        // Create new player - omit the ID field completely
-        const newPlayer = {
-          isActive: selectedPlayer.isActive,
-          Name: selectedPlayer.Name,
-          Position: selectedPlayer.Position,
-          BildURL: selectedPlayer.BildURL || '',
-          Fuß: selectedPlayer.Fuß || '',
-          Geburtsdatum: selectedPlayer.Geburtsdatum || '',
-          KM_Res_Beides: selectedPlayer.KM_Res_Beides || '',
-        }
+      // Create a consistent player object for both create and update operations
+      const playerData = {
+        isActive: selectedPlayer.isActive,
+        Name: selectedPlayer.Name,
+        Position: selectedPlayer.Position,
+        BildURL: selectedPlayer.BildURL,
+        Fuß: selectedPlayer.Fuß,
+        Geburtsdatum: selectedPlayer.Geburtsdatum,
+        KM_Res_Beides: selectedPlayer.KM_Res_Beides,
+      }
 
+      if (isAddingNew) {
         const { data, error } = await supabase
           .from('players')
-          .insert([newPlayer])
+          .insert([playerData])
           .select()
 
         if (error) {
@@ -124,18 +124,9 @@ export default function ManagePlayers({
 
         console.log('✅ New player added:', data)
       } else {
-        // Update existing player
         const { error } = await supabase
           .from('players')
-          .update({
-            isActive: selectedPlayer.isActive,
-            Name: selectedPlayer.Name,
-            Position: selectedPlayer.Position,
-            BildURL: selectedPlayer.BildURL || '',
-            Fuß: selectedPlayer.Fuß || '',
-            Geburtsdatum: selectedPlayer.Geburtsdatum || '',
-            KM_Res_Beides: selectedPlayer.KM_Res_Beides || '',
-          })
+          .update(playerData)
           .eq('ID', selectedPlayer.ID)
 
         if (error) {

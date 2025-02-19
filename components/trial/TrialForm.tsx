@@ -5,6 +5,8 @@ import { useState, FormEvent } from 'react'
 import { Calendar } from 'lucide-react'
 import { format, addMonths, eachDayOfInterval, isTuesday, isBefore, startOfToday } from 'date-fns'
 import SubmissionSuccess from './SubmissionSuccess'
+import { supabase } from '../../lib/supabase'
+import { sendPushNotification } from '@/app/actions/notifications'
 
 interface TrialFormProps {
   onBack: () => void
@@ -27,9 +29,13 @@ export default function TrialForm({ onBack }: TrialFormProps) {
   const [dateError, setDateError] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [submittedName, setSubmittedName] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [success, setSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const handleClose = () => {
     setIsSubmitted(false)
+    resetForm()
     onBack()
   }
 
@@ -42,31 +48,52 @@ export default function TrialForm({ onBack }: TrialFormProps) {
     .filter(date => isTuesday(date) && !isBefore(date, today))
     .slice(0, 3)  // Take only the next 3 Tuesdays
 
-  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    
     if (!selectedDate) {
       setDateError(true)
       return
     }
     
-    setDateError(false)
-    const formData = new FormData(e.currentTarget)
-    const name = formData.get('name') as string
-    setSubmittedName(name)
+    setSubmitting(true)
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500))
-    
-    console.log({
-      name: formData.get('name'),
-      phone: formData.get('phone'),
-      position: formData.get('position'),
-      lastClub: formData.get('lastClub'),
-      date: selectedDate
-    })
+    try {
+      const form = e.currentTarget
+      const formData = new FormData(form)
+      const name = formData.get('name') as string
+      
+      const formPayload = {
+        full_name: name,
+        phone_number: formData.get('phone') as string,
+        position: formData.get('position') as string,
+        trial_date: selectedDate,
+        last_club: formData.get('lastClub') as string || null
+      }
 
-    setIsSubmitted(true)
+      const { error } = await supabase
+        .from('trial_submissions')
+        .insert([formPayload])
+
+      if (error) throw error
+      
+      // Send push notification
+      await sendPushNotification(formPayload)
+      
+      setSubmittedName(name)
+      setIsSubmitted(true)
+    } catch (err: any) {
+      console.error('Error submitting trial form:', err.message)
+      setError(err.message || 'Failed to submit trial request')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const resetForm = () => {
+    setSelectedDate(null)
+    setShowCalendar(false)
+    setDateError(false)
+    setSubmittedName('')
   }
 
   return (
@@ -107,6 +134,8 @@ export default function TrialForm({ onBack }: TrialFormProps) {
                 className="w-full px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white text-[16px]
                   placeholder:text-white/50 focus:outline-none focus:border-red-500/50"
                 placeholder="Enter your full name"
+                value={submittedName}
+                onChange={(e) => setSubmittedName(e.target.value)}
               />
             </div>
 
@@ -217,6 +246,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
               className="w-full px-6 py-3 bg-gradient-to-r from-red-500 to-red-600 text-white font-medium 
                 rounded-lg transition-transform hover:scale-105 focus:outline-none focus:ring-2 
                 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
+              disabled={submitting}
             >
               Submit Request
             </button>

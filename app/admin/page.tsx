@@ -6,11 +6,16 @@ import { supabase } from '@/lib/supabase'
 import ManagementMenu from '@/components/admin/ManagementMenu'
 import LoginScreen from '@/components/auth/LoginScreen'
 import type { User } from '@supabase/supabase-js'
+import type { Practice, Player, Attendance } from '@/types/database'
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null)
   const [isAdmin, setIsAdmin] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [practices, setPractices] = useState<Practice[]>([])
+  const [players, setPlayers] = useState<Player[]>([])
+  const [attendance, setAttendance] = useState<Attendance[]>([])
+  const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
     checkUser()
@@ -63,7 +68,103 @@ export default function Admin() {
     return () => subscription.unsubscribe()
   }, [])
 
-  if (loading) {
+  // Add this function to load all required data
+  const loadInitialData = async () => {
+    try {
+      // First initialize any missing practices
+      await initializePractices()
+      
+      // Then get all practices
+      const today = new Date().toISOString().split('T')[0]
+      const { data: practicesData } = await supabase
+        .from('practices')
+        .select('*')
+        .lte('Date', today)
+        .eq('Canceled', false)
+        .order('Date', { ascending: false })
+      
+      // Get all active players
+      const { data: playersData } = await supabase
+        .from('players')
+        .select('*')
+        .order('Name', { ascending: true })
+      
+      // Get all attendance records
+      const { data: attendanceData } = await supabase
+        .from('practice_attendance')
+        .select('*')
+
+      setPractices(practicesData || [])
+      setPlayers(playersData || [])
+      setAttendance(attendanceData || [])
+    } catch (error) {
+      console.error('Error loading initial data:', error)
+    } finally {
+      setDataLoading(false)
+    }
+  }
+
+  // Load data when admin is confirmed
+  useEffect(() => {
+    if (isAdmin) {
+      loadInitialData()
+    }
+  }, [isAdmin])
+
+  // Add back the initialize practices function
+  const initializePractices = async () => {
+    try {
+      const missingTuesdays = await getMissingTuesdays()
+      if (missingTuesdays.length === 0) return
+
+      const { error } = await supabase
+        .from('practices')
+        .insert(
+          missingTuesdays.map(date => ({
+            Date: date,
+            AttendanceSet: false,
+            Canceled: false
+          }))
+        )
+
+      if (error) console.error('Error adding practices:', error)
+    } catch (error) {
+      console.error('Error in initializePractices:', error)
+    }
+  }
+
+  // Add back the get missing tuesdays function
+  const getMissingTuesdays = async () => {
+    const today = new Date()
+    const { data: allPractices } = await supabase
+      .from('practices')
+      .select('Date')
+      .order('Date', { ascending: true })
+
+    if (!allPractices?.length) return []
+
+    const existingDatesSet = new Set(allPractices.map(p => p.Date))
+    const missingTuesdays = new Set<string>()
+
+    const startDate = new Date(allPractices[0].Date)
+    startDate.setUTCHours(0, 0, 0, 0)
+    today.setUTCHours(0, 0, 0, 0)
+
+    const currentDate = new Date(startDate)
+    while (currentDate <= today) {
+      if (currentDate.getDay() === 2) {
+        const dateString = currentDate.toISOString().split('T')[0]
+        if (!existingDatesSet.has(dateString)) {
+          missingTuesdays.add(dateString)
+        }
+      }
+      currentDate.setDate(currentDate.getDate() + 1)
+    }
+
+    return Array.from(missingTuesdays)
+  }
+
+  if (loading || dataLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="w-8 h-8 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
@@ -108,7 +209,12 @@ export default function Admin() {
     >
       <div className="container mx-auto p-4 md:p-8 h-[100dvh] overflow-y-auto md:overflow-hidden">
         <div className="bg-black/20 backdrop-blur-sm rounded-xl border border-white/5 p-6 h-full">
-          <ManagementMenu />
+          <ManagementMenu 
+            practices={practices}
+            players={players}
+            attendance={attendance}
+            onDataUpdate={loadInitialData}
+          />
         </div>
       </div>
     </motion.main>

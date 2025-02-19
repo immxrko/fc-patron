@@ -5,33 +5,7 @@ import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft, Calendar, Users, Save, Search, Trash2, AlertCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-
-interface Practice {
-  ID: number
-  Date: string
-  AttendanceSet: boolean
-  Canceled: boolean
-}
-
-interface Player {
-  ID: number
-  Name: string
-  BildURL: string
-  isActive: boolean
-}
-
-interface Attendance {
-  PracticeID: number
-  PlayerID: number
-  Present: boolean
-}
-
-interface TopAttender {
-  id: number
-  name: string
-  image: string
-  count: number
-}
+import type { Practice, Player, Attendance, TopAttender } from '@/types/database'
 
 interface ManagePracticeProps {
   onBack: () => void
@@ -326,11 +300,12 @@ export default function ManagePractice({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col md:flex-row md:items-center gap-3">
         <motion.button
           onClick={onBack}
           className="px-4 py-2 bg-black/20 hover:bg-black/40 
-            rounded-xl text-gray-400 text-sm font-medium transition-colors flex items-center gap-2"
+            rounded-xl text-gray-400 text-sm font-medium transition-colors 
+            flex items-center gap-2 w-fit"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -357,7 +332,7 @@ export default function ManagePractice({
             ) : practices.length > 0 ? (
               <div className="overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-red-500/20 
                 hover:scrollbar-thumb-red-500/30 scrollbar-track-transparent pr-2">
-                <div className="grid grid-cols-2 md:grid-cols-1 gap-2">
+                <div className="grid grid-cols-1 gap-2">
                   {practices.map((practice) => (
                     <motion.div
                       key={practice.ID}
@@ -478,29 +453,33 @@ export default function ManagePractice({
               {/* Player Grid - Scrollable */}
               <div className="overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-red-500/20 
                 hover:scrollbar-thumb-red-500/30 scrollbar-track-transparent pr-2">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 pb-20">
                   {filteredPlayers.map((player) => (
                     <motion.div
                       key={player.ID}
                       onClick={() => toggleAttendance(player.ID)}
-                      className={`p-3 rounded-lg transition-all cursor-pointer
-                        hover:bg-black/40
+                      className={`p-2 rounded-lg transition-all cursor-pointer flex items-center gap-3
+                        hover:bg-black/40 
                         ${attendance.find(a => a.PlayerID === player.ID && a.Present)
                           ? 'bg-green-500/10 border border-green-500/20'
                           : 'bg-black/20 border border-white/5'}`}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <div className="flex items-center gap-3">
-                        <img
-                          src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
-                          alt={player.Name}
-                          className="w-12 h-12 rounded-lg object-cover bg-black/20"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-sm font-medium text-white truncate">{player.Name}</div>
-                        </div>
+                      <div className="w-4 h-4 rounded border border-white/20 flex items-center justify-center
+                        ${attendance.find(a => a.PlayerID === player.ID && a.Present) ? 'bg-green-500' : 'bg-transparent'}">
+                        {attendance.find(a => a.PlayerID === player.ID && a.Present) && (
+                          <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
                       </div>
+                      <img
+                        src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
+                        alt={player.Name}
+                        className="w-8 h-8 rounded-lg object-cover bg-black/20"
+                      />
+                      <span className="text-sm font-medium text-white truncate flex-1">{player.Name}</span>
                     </motion.div>
                   ))}
                 </div>

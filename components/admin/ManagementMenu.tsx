@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { useState, useEffect } from 'react'
 import ManagePlayers from './ManagePlayers'
 import ManagePractice from './ManagePractice'
+import ManageGames from './ManageGames'
 
 interface Player {
   ID: number
@@ -32,6 +33,12 @@ interface Practice {
   Canceled: boolean
 }
 
+interface Attendance {
+  PracticeID: number
+  PlayerID: number
+  Present: boolean
+}
+
 interface MenuItem {
   title: string
   description: string
@@ -39,16 +46,15 @@ interface MenuItem {
   onClick: () => void
 }
 
-export default function ManagementMenu() {
+interface ManagementMenuProps {
+  practices: Practice[]
+  players: Player[]
+  attendance: Attendance[]
+  onDataUpdate: () => Promise<void>
+}
+
+export default function ManagementMenu({ practices, players, attendance, onDataUpdate }: ManagementMenuProps) {
   const [selectedSection, setSelectedSection] = useState<string | null>(null)
-  const [players, setPlayers] = useState<Player[]>([])
-  const [practices, setPractices] = useState<Practice[]>([])
-  const [attendance, setAttendance] = useState<{
-    PracticeID: number;
-    PlayerID: number;
-    Present: boolean;
-  }[]>([])
-  // eslint-disable-next-line
   const [loading, setLoading] = useState(true)
   
   const menuItems: MenuItem[] = [
@@ -79,47 +85,12 @@ export default function ManagementMenu() {
   ]
 
   useEffect(() => {
-    fetchData()
+    onDataUpdate()
+    setLoading(false)
   }, [])
 
-  const fetchData = async () => {
-    setLoading(true)
-    try {
-      // Fetch players
-      const { data: playersData } = await supabase
-        .from('players')
-        .select('*')
-        .order('Name')
-      
-      if (playersData) setPlayers(playersData)
-
-      // Fetch practices
-      const today = new Date().toISOString().split('T')[0]
-      const { data: practicesData } = await supabase
-        .from('practices')
-        .select('*')
-        .lte('Date', today)
-        .eq('Canceled', false)
-        .order('Date', { ascending: false })
-      
-      if (practicesData) setPractices(practicesData)
-
-      // Fetch attendance data
-      const { data: attendanceData } = await supabase
-        .from('practice_attendance')
-        .select('*')
-      
-      if (attendanceData) setAttendance(attendanceData)
-
-    } catch (error) {
-      console.error('Error fetching data:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   const handleRefreshData = async () => {
-    await fetchData()
+    await onDataUpdate()
   }
 
   const handleSignOut = async () => {
@@ -144,6 +115,15 @@ export default function ManagementMenu() {
         practices={practices}
         attendance={attendance}
         onDataUpdate={handleRefreshData}
+      />
+    )
+  }
+
+  if (selectedSection === 'games') {
+    return (
+      <ManageGames 
+        onBack={() => setSelectedSection(null)}
+        players={players}
       />
     )
   }

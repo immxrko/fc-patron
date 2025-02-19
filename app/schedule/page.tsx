@@ -2,16 +2,129 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { supabase } from '@/lib/supabase'
 import NextMatch from '@/components/schedule/NextMatch'
 import HeadToHead from '@/components/schedule/HeadToHead'
+
+interface Match {
+  id: number
+  opponentid: number
+  venueid: number
+  matchtypeid: number
+  leagueid: number
+  seasonid: number
+  date: string
+  time: string
+  resTime?: string | null
+  result: string
+  matchday: number
+  ishomegame: boolean
+  km_res: string
+  opponent?: {
+    name: string
+    logourl: string
+    league?: string
+  }
+  venue?: {
+    name: string
+    adress: string
+  }
+  matchtype?: string
+}
 
 export default function Schedule() {
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false)
+  const [nextMatch, setNextMatch] = useState<Match | null>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setIsClient(true)
+    fetchNextMatch()
   }, [])
+
+  const fetchNextMatch = async () => {
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      
+      // Get next match (KM)
+      const { data: matchData, error: matchError } = await supabase
+        .from('matches')
+        .select('*')
+        .gte('date', today)
+        .eq('km_res', 'KM')
+        .order('date', { ascending: true })
+        .limit(1)
+        .single()
+
+      if (matchError) throw matchError
+
+      // Get RES match for the same date if exists
+      const { data: resMatchData, error: resMatchError } = await supabase
+        .from('matches')
+        .select('time')
+        .eq('date', matchData.date)
+        .eq('km_res', 'RES')
+        .single()
+
+      if (resMatchError && resMatchError.code !== 'PGRST116') { // Ignore "no rows returned" error
+        console.error('Error fetching RES match:', resMatchError)
+      }
+
+      // Get opponent
+      const { data: opponentData, error: opponentError } = await supabase
+        .from('opponents')
+        .select('name, logourl')  // Just select the fields we need directly
+        .eq('id', matchData.opponentid)
+        .single()
+
+      if (opponentError) throw opponentError
+
+      // Get venue
+      const { data: venueData, error: venueError } = await supabase
+        .from('venues')
+        .select('*')
+        .eq('id', matchData.venueid)
+        .single()
+
+      if (venueError) throw venueError
+
+      // Get matchtype if not league game
+      let leagueData = null
+      if (matchData.matchtypeid !== 1) {
+        const { data: typeData, error: typeError } = await supabase
+          .from('leagues')
+          .select('name')
+          .eq('id', matchData.leagueid)
+          .single()
+
+        if (typeError) {
+          console.error('Error fetching league data:', typeError)
+        } else {
+          leagueData = typeData
+        
+        }
+      }
+
+      setNextMatch({
+        ...matchData,
+        resTime: resMatchData?.time || null,
+        opponent: {
+          name: opponentData.name,
+          logourl: opponentData.logourl,
+          league: leagueData?.name
+        },
+        venue: {
+          name: venueData.name,
+          adress: venueData.adress
+        }
+      })
+    } catch (error) {
+      console.error('Error fetching next match:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -92,13 +205,19 @@ export default function Schedule() {
         >
           <div className="lg:col-span-2">
             <motion.div variants={itemVariants}>
-              <NextMatch onOpponentSelect={setSelectedOpponent} />
+              {nextMatch && <NextMatch match={nextMatch} onMatchComplete={fetchNextMatch} />}
             </motion.div>
           </div>
           
           <div>
             <motion.div variants={itemVariants}>
-              <HeadToHead opponent={selectedOpponent} />
+              <HeadToHead 
+                opponent={nextMatch ? {
+                  id: nextMatch.opponentid,
+                  name: nextMatch.opponent?.name || '',
+                  logourl: nextMatch.opponent?.logourl || ''
+                } : undefined} 
+              />
             </motion.div>
           </div>
         </motion.div>
