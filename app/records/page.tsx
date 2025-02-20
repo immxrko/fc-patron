@@ -5,7 +5,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import TeamStats from '@/components/records/TeamStats'
 import PlayerRecords from '@/components/records/PlayerRecords'
 import SeasonalAchievements from '@/components/records/SeasonalAchievements'
-import HistoricalMilestones from '@/components/records/HistoricalMilestones'
 
 export default function Records() {
   const [isClient, setIsClient] = useState(false)
@@ -85,21 +84,20 @@ export default function Records() {
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           variants={itemVariants}
         >
+          {/* Left Column */}
           <div className="space-y-6">
             <motion.div variants={itemVariants}>
               <TeamStats />
             </motion.div>
             <motion.div variants={itemVariants}>
-              <PlayerRecords />
+              <SeasonalAchievements />
             </motion.div>
           </div>
           
-          <div className="space-y-6">
+          {/* Right Column */}
+          <div>
             <motion.div variants={itemVariants}>
-              <SeasonalAchievements />
-            </motion.div>
-            <motion.div variants={itemVariants}>
-              <HistoricalMilestones />
+              <PlayerRecords />
             </motion.div>
           </div>
         </motion.div>

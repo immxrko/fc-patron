@@ -47,7 +47,6 @@ export default function Schedule() {
     try {
       const today = new Date().toISOString().split('T')[0]
       
-      // Get next match (KM)
       const { data: matchData, error: matchError } = await supabase
         .from('matches')
         .select('*')

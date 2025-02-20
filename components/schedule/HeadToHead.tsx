@@ -178,23 +178,7 @@ export default function HeadToHead({ opponent }: HeadToHeadProps) {
     }
   }
 
-  if (!opponent || loading) return (
-    <motion.div 
-      className="bg-black/20 backdrop-blur-sm rounded-2xl p-6"
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-    >
-      <div className="flex items-center gap-3 mb-6">
-        <Swords className="w-5 h-5 text-red-400" />
-        <h2 className="text-xl font-bold text-white">Head to Head</h2>
-      </div>
-      <div className="text-center p-4">
-        <span className="text-sm text-gray-400">
-          {loading ? "Loading..." : "Select an opponent"}
-        </span>
-      </div>
-    </motion.div>
-  )
+  if (!opponent || loading) return null;
 
   return (
     <motion.div 

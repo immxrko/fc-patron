@@ -1,26 +1,213 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import { Star} from 'lucide-react'
+import { Star } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
+
+interface TopScorer {
+  name: string
+  goals: number
+  matches: number
+  image: string
+}
+
+interface GoalCount {
+  playerid: number
+  count: number
+}
 
 export default function PlayerRecords() {
-  const topScorers = [
-    { name: "Josip MATIJEVIC", goals: 78, matches: 95, image: "https://www.oefb.at/oefb2/images/1278650591628556536_4dcb084bb2c30e1395ee-1,0-320x320.png" },
-    { name: "Aleksandar KOSTIC", goals: 65, matches: 88, image: "https://www.oefb.at/oefb2/images/1278650591628556536_4dcb084bb2c30e1395ee-1,0-320x320.png" },
-    { name: "Mario STEFEL", goals: 52, matches: 82, image: "https://www.oefb.at/oefb2/images/1278650591628556536_4dcb084bb2c30e1395ee-1,0-320x320.png" }
-  ]
+  const [topScorers, setTopScorers] = useState<TopScorer[]>([])
+  const [topTrainers, setTopTrainers] = useState<any[]>([])
+  const [records, setRecords] = useState<any[]>([])
 
-  const topTrainers = [
-    { name: "Aleksandar KOSTIC", attended: 156, total: 160, image: "https://www.oefb.at/oefb2/images/1278650591628556536_4dcb084bb2c30e1395ee-1,0-320x320.png" },
-    { name: "Mario STEFEL", attended: 154, total: 160, image: "https://www.oefb.at/oefb2/images/1278650591628556536_4dcb084bb2c30e1395ee-1,0-320x320.png" },
-    { name: "Josip MATIJEVIC", attended: 152, total: 160, image: "https://www.oefb.at/oefb2/images/1278650591628556536_4dcb084bb2c30e1395ee-1,0-320x320.png" }
-  ]
+  useEffect(() => {
+    fetchTopScorers()
+    fetchTopAttenders()
+    fetchMostGoalsInGame()
+    fetchMostAssists()
+    fetchHattricks()
+  }, [])
 
-  const records = [
-    { label: "Most Goals in a Game", value: "5", holder: "Josip MATIJEVIC", date: "vs SC Wiener Neustadt, 15.10.23" },
-    { label: "Fastest Goal", value: "28s", holder: "Mario STEFEL", date: "vs ASK Ebreichsdorf, 12.03.24" },
-    { label: "Most Assists", value: "102", holder: "Aleksandar KOSTIC", date: "All-time" }
-  ]
+  const fetchTopScorers = async () => {
+    try {
+      // First get top 3 scorers
+      const topScorers = []
+      let excludeIds = []
+      
+      for (let i = 0; i < 3; i++) {
+        const { data: goalData, error: goalError } = await supabase
+          .from('player_goals')
+          .select('playerid, count')
+          .not('playerid', 'in', `(${excludeIds.join(',')})`)
+          .order('count', { ascending: false })
+          .limit(1) as { data: GoalCount[] | null, error: any }
+        
+        if (goalError) throw goalError
+        if (goalData && goalData[0]) {
+          topScorers.push(goalData[0])
+          excludeIds.push(goalData[0].playerid)
+        }
+      }
+
+      if (topScorers.length > 0) {
+        // Then fetch player details
+        const { data: playerData, error: playerError } = await supabase
+          .from('players')
+          .select('ID, Name, BildURL')
+          .in('ID', topScorers.map(g => g.playerid))
+
+        if (playerError) throw playerError
+
+        // Get appearances data from the view
+        const { data: appearanceData } = await supabase
+          .from('player_appearances')
+          .select('*')
+          .eq('km_res', 'KM')
+          .in('playerid', topScorers.map(g => g.playerid))
+
+        if (playerData) {
+          const scorers = topScorers.map((goal) => {
+            const appearances = appearanceData?.find(a => a.playerid === goal.playerid)
+            const totalGames = appearances ? 
+              parseInt(appearances['2021/22'] || '0') + 
+              parseInt(appearances['2022/23'] || '0') + 
+              parseInt(appearances['2023/24'] || '0') + 
+              parseInt(appearances['2024/25'] || '0') : 0
+
+            return {
+              name: playerData.find(p => p.ID === goal.playerid)?.Name || 'Unknown',
+              goals: goal.count,
+              matches: totalGames,
+              image: playerData.find(p => p.ID === goal.playerid)?.BildURL || '/default-player.png'
+            }
+          })
+
+          setTopScorers(scorers)
+        }
+      }
+    } catch (error: any) {
+      console.error('Error fetching top scorers:', error.message || error)
+    }
+  }
+
+  const fetchTopAttenders = async () => {
+    // First get total number of practices where attendance was set
+    const { data: practicesData } = await supabase
+      .from('practices')
+      .select('count')
+      .eq('AttendanceSet', true)
+      .single()
+
+    const totalPractices = practicesData?.count || 0
+
+    // Then get attendance data
+    const { data } = await supabase
+      .from('practice_attendance')
+      .select(`
+        PlayerID,
+        Present,
+        players (Name, BildURL)
+      `)
+      .eq('Present', true)
+
+    if (!data) return []
+
+    // Count attendances per player
+    const attendanceCounts = data.reduce((acc: any, curr: any) => {
+      const playerId = curr.PlayerID
+      acc[playerId] = {
+        count: (acc[playerId]?.count || 0) + 1,
+        name: curr.players.Name,
+        image: curr.players.BildURL
+      }
+      return acc
+    }, {})
+
+    // Convert to array and sort by count
+    const topAttenders = Object.entries(attendanceCounts)
+      .map(([id, info]: [string, any]) => ({
+        name: info.name,
+        attended: info.count,
+        total: totalPractices,
+        image: info.image
+      }))
+      .sort((a, b) => b.attended - a.attended)
+      .slice(0, 3)
+
+    setTopTrainers(topAttenders)
+  }
+
+  const fetchMostGoalsInGame = async () => {
+    const { data, error } = await supabase
+      .from('player_match_goals')
+      .select('*')
+      .order('goals', { ascending: false })
+      .limit(1)
+
+    if (error) throw error
+    if (!data || !data[0]) return null
+
+    return {
+      label: "Most Goals in a Game",
+      value: data[0].goals.toString(),
+      holder: data[0].player_name,
+      date: `vs ${data[0].opponent}, ${new Date(data[0].match_date).toLocaleDateString('de-DE')}`
+    }
+  }
+
+  const fetchMostAssists = async () => {
+    const { data, error } = await supabase
+      .from('player_assists')
+      .select('*')
+      .order('assists', { ascending: false })
+      .limit(1)
+
+    if (error) throw error
+    if (!data || !data[0]) return null
+
+    return {
+      label: "Most Assists",
+      value: data[0].assists.toString(),
+      holder: data[0].player_name,
+      date: "All-time"
+    }
+  }
+
+  const fetchHattricks = async () => {
+    const { data, error } = await supabase
+      .from('player_hattricks')
+      .select('*')
+      .order('hattricks', { ascending: false })
+      .limit(1)
+
+    if (error) throw error
+    if (!data || !data[0]) return null
+
+    return {
+      label: "Most Hat-tricks",
+      value: data[0].hattricks.toString(),
+      holder: data[0].player_name,
+      date: "All-time"
+    }
+  }
+
+  useEffect(() => {
+    const loadRecords = async () => {
+      const mostGoals = await fetchMostGoalsInGame()
+      const mostHattricks = await fetchHattricks()
+      const mostAssists = await fetchMostAssists()
+      if (mostGoals) {
+        setRecords([
+          mostGoals,
+          mostHattricks,
+          mostAssists
+        ])
+      }
+    }
+    loadRecords()
+  }, [])
 
   return (
     <div className="bg-black/20 backdrop-blur-sm rounded-2xl p-6">
@@ -56,13 +243,13 @@ export default function PlayerRecords() {
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-xs text-red-400">{scorer.goals} Goals</span>
                 <span className="w-1 h-1 bg-gray-600 rounded-full" />
-                <span className="text-xs text-gray-400">{scorer.matches} Matches</span>
+                {/*  <span className="text-xs text-gray-400">{scorer.matches} Games 2024/25</span> */}
               </div>
             </div>
-            <div className="text-lg font-bold text-white">
-              {(scorer.goals / scorer.matches).toFixed(2)}
-              <span className="text-xs text-gray-400 ml-1">G/M</span>
-            </div>
+            {/*  <div className="text-lg font-bold text-white">
+              {(scorer.goals /scorer.matches).toFixed(0)}
+              <span className="text-xs text-gray-400 ml-1">Goals per Game</span>
+            </div> */}
           </motion.div>
         ))}
       </div>

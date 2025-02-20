@@ -1,16 +1,130 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Trophy, Target, Percent, Flame } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
+
+interface SeasonWinRate {
+  seasonId: number
+  seasonName: string
+  winPercentage: number
+}
 
 export default function TeamStats() {
-  const stats = {
-    totalWins: 156,
-    winPercentage: 72.3,
-    cleanSheets: 48,
-    currentStreak: 12,
-    goalsScored: 423,
-    goalsConceded: 142
+  const [stats, setStats] = useState({
+    totalWins: 0,
+    winPercentage: 0,
+    cleanSheets: 0,
+    currentStreak: 0,
+    goalsScored: 0,
+    goalsConceded: 0
+  })
+  const [seasonWinRates, setSeasonWinRates] = useState<SeasonWinRate[]>([])
+
+  useEffect(() => {
+    fetchStats()
+  }, [])
+
+  const getSeasonName = (seasonId: number): string => {
+    switch (seasonId) {
+      case 1: return '21/22'
+      case 2: return '22/23'
+      case 3: return '23/24'
+      case 4: return '24/25'
+      default: return ''
+    }
+  }
+
+  const fetchStats = async () => {
+    try {
+      const { data: matches, error } = await supabase
+        .from('matches')
+        .select('*')
+        .eq('km_res', 'KM')
+        .not('result', 'is', null)
+        .order('date', { ascending: false })
+
+      if (error) throw error
+
+      if (matches && matches.length > 0) {
+        // Calculate total wins
+        const wins = matches.filter(match => {
+          const [ourGoals, theirGoals] = match.result.split(':').map(Number)
+          return ourGoals > theirGoals
+        }).length
+
+        // Calculate win percentage
+        const winPercentage = ((wins / matches.length) * 100).toFixed(1)
+
+        // Calculate clean sheets
+        const cleanSheets = matches.filter(match => {
+          const [_, theirGoals] = match.result.split(':').map(Number)
+          return theirGoals === 0
+        }).length
+
+        // Calculate current streak
+        let streak = 0
+        for (const match of matches) {
+          const [ourGoals, theirGoals] = match.result.split(':').map(Number)
+          if (ourGoals > theirGoals) {
+            streak++
+          } else {
+            break
+          }
+        }
+
+        // Calculate total goals
+        const { goalsScored, goalsConceded } = matches.reduce((acc, match) => {
+          const [ourGoals, theirGoals] = match.result.split(':').map(Number)
+          return {
+            goalsScored: acc.goalsScored + ourGoals,
+            goalsConceded: acc.goalsConceded + theirGoals
+          }
+        }, { goalsScored: 0, goalsConceded: 0 })
+
+        // Calculate win rates by season
+        const seasonMatches = matches.reduce((acc, match) => {
+          if (!acc[match.seasonid]) {
+            acc[match.seasonid] = {
+              total: 0,
+              wins: 0
+            }
+          }
+          acc[match.seasonid].total++
+          
+          // Parse result string to determine win
+          const [ourGoals, theirGoals] = match.result.split(':').map(Number)
+          if (ourGoals > theirGoals) {
+            acc[match.seasonid].wins++
+          }
+          
+          return acc
+        }, {} as Record<number, { total: number; wins: number }>)
+
+
+        const winRates: SeasonWinRate[] = Object.entries(seasonMatches).map(([seasonId, data]) => ({
+          seasonId: parseInt(seasonId),
+          seasonName: getSeasonName(parseInt(seasonId)),
+          winPercentage: parseFloat(((data as { total: number; wins: number }).wins / 
+                                    (data as { total: number; wins: number }).total * 100).toFixed(1))
+        })).sort((a, b) => a.seasonId - b.seasonId)
+
+
+        setSeasonWinRates(winRates)
+
+        setStats({
+          totalWins: wins,
+          winPercentage: parseFloat(winPercentage),
+          cleanSheets,
+          currentStreak: streak,
+          goalsScored,
+          goalsConceded
+        })
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error)
+    }
   }
 
   return (
@@ -83,23 +197,25 @@ export default function TeamStats() {
         <div className="bg-black/30 rounded-xl border border-white/5 p-4">
           <h3 className="text-sm font-medium text-gray-400 mb-4">Win Rate by Season</h3>
           <div className="h-32 flex items-end gap-2">
-            {[65, 70, 75, 72, 78].map((percentage, index) => (
+            {seasonWinRates.map((season, index) => (
               <motion.div
-                key={index}
+                key={season.seasonId}
                 className="flex-1 bg-gradient-to-t from-red-500/20 to-red-400/20 rounded-t-lg relative group"
                 initial={{ height: 0 }}
-                animate={{ height: `${percentage}%` }}
+                animate={{ height: `${season.winPercentage}%` }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
               >
                 <div className="absolute inset-x-0 -top-6 opacity-0 group-hover:opacity-100 transition-opacity text-center">
-                  <span className="text-xs font-medium text-white">{percentage}%</span>
+                  <span className="text-xs font-medium text-white">{season.winPercentage}%</span>
                 </div>
               </motion.div>
             ))}
           </div>
           <div className="flex justify-between mt-2">
-            {['20/21', '21/22', '22/23', '23/24', '24/25'].map((season) => (
-              <span key={season} className="text-xs text-gray-400">{season}</span>
+            {seasonWinRates.map((season) => (
+              <span key={season.seasonId} className="text-xs text-gray-400">
+                {season.seasonName}
+              </span>
             ))}
           </div>
         </div>

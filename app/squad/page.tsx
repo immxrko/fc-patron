@@ -69,21 +69,19 @@ export default function Squad() {
     >
       {/* Desktop Layout */}
       <div className="hidden md:block container mx-auto p-8">
-        <motion.div variants={itemVariants}>
-          <TeamHeader onSeasonChange={setSelectedSeason} />
-        </motion.div>
-        
-        <motion.div 
-          variants={itemVariants}
-          className="flex gap-6 mb-8 items-center justify-between"
-        >
-          <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
-            <TeamSelector onTeamChange={setSelectedTeam} />
+        <div className="flex items-start justify-between mb-8">
+          <motion.div variants={itemVariants}>
+            <TeamHeader onSeasonChange={setSelectedSeason} />
           </motion.div>
-          <motion.div variants={itemVariants} className="w-96" whileHover={{ scale: 1.02 }}>
-            <SearchBar onSearch={handleSearch} />
-          </motion.div>
-        </motion.div>
+          <div className="space-y-4">
+            <motion.div variants={itemVariants} whileHover={{ scale: 1.02 }}>
+              <TeamSelector selectedTeam={selectedTeam} onTeamChange={setSelectedTeam} />
+            </motion.div>
+            <motion.div variants={itemVariants} className="w-96" whileHover={{ scale: 1.02 }}>
+              <SearchBar onSearch={handleSearch} />
+            </motion.div>
+          </div>
+        </div>
 
         <motion.div variants={itemVariants}>
           <PlayerGrid 
@@ -105,7 +103,7 @@ export default function Squad() {
                 className="flex-1"
                 animate={{ opacity: isSearchOpen ? 0 : 1, width: isSearchOpen ? 0 : 'auto' }}
               >
-                <TeamSelector onTeamChange={setSelectedTeam} />
+                <TeamSelector selectedTeam={selectedTeam} onTeamChange={setSelectedTeam} />
               </motion.div>
               
               <motion.div 

@@ -60,31 +60,7 @@ export default function TeamHeader({ onSeasonChange }: TeamHeaderProps) {
                   )}
                 </div>
               </div>
-
-              {/* Stats boxes - shown inline on mobile */}
-              <div className="flex md:hidden items-center gap-2">
-                <div className="flex items-center gap-2 px-3 py-2 bg-black/30 rounded-lg border border-white/10">
-                  <Trophy className="h-4 w-4 text-red-400" />
-                  <span className="text-lg font-bold text-white">1st</span>
-                </div>
-              </div>
             </div>
-          </div>
-        </div>
-
-        {/* Original stats boxes - hidden on mobile, shown on desktop */}
-        <div className="hidden md:flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-8 md:ml-auto w-full md:w-auto">
-          <div className="flex items-center gap-3 px-6 py-3 bg-black/30 rounded-xl border border-white/10 transition-all duration-300 hover:bg-black/40">
-            <Trophy className="h-6 w-6 text-red-400" />
-            <div>
-              <p className="text-2xl font-bold text-white">1st</p>
-              <p className="text-xs font-medium text-gray-400">Position</p>
-            </div>
-          </div>
-          
-          <div className="px-6 py-3 bg-black/30 rounded-xl border border-white/10 transition-all duration-300 hover:bg-black/40">
-            <div className="text-2xl font-bold text-white mb-1">18-2-1</div>
-            <p className="text-xs font-medium text-gray-400">W-D-L</p>
           </div>
         </div>
       </div>
