@@ -81,3 +81,17 @@ export interface Season {
   id: number
   name: string  // e.g. "2021/22"
 } 
+
+export interface MatchDetail {
+  matchid: number
+  opponent_name: string
+  logourl: string
+  result: string | null
+  ishomegame: boolean
+  season_name: string
+  km_res: string | null
+  date: string
+  matchday: number | null
+  matchtype: string
+  lineupadded: boolean
+}

@@ -44,6 +44,15 @@ export default function ManagePractice({
     loadTopAttenders()
   }, [])
 
+  useEffect(() => {
+    // Add this effect to initialize practices when component mounts
+    const init = async () => {
+      await initializePractices();
+      await fetchPractices();
+    };
+    init();
+  }, []);
+
   // Function to get all Tuesdays between the oldest practice and today
   const getMissingTuesdays = async () => {
     const today = new Date()
@@ -132,15 +141,27 @@ export default function ManagePractice({
   }
 
   const fetchPractices = async () => {
-    const today = new Date().toISOString().split('T')[0]
-    const { data } = await supabase
-      .from('practices')
-      .select('*')
-      .lte('Date', today) // Only fetch practices up to today
-      .eq('Canceled', false) // Only fetch non-canceled practices
-      .order('Date', { ascending: false })
-    
-    if (data) setPractices(data)
+    try {
+      const today = new Date().toISOString().split('T')[0]
+      const { data, error } = await supabase
+        .from('practices')
+        .select('*')
+        .lte('Date', today) // Only fetch practices up to today
+        .eq('Canceled', false) // Only fetch non-canceled practices
+        .order('Date', { ascending: false })
+      
+      if (error) {
+        console.error('Error fetching practices:', error)
+        return
+      }
+      
+      if (data) {
+        console.log('Fetched practices:', data) // Debug log
+        setPractices(data)
+      }
+    } catch (error) {
+      console.error('Error in fetchPractices:', error)
+    }
   }
 
   const fetchAttendance = async (practiceId: number) => {
@@ -329,7 +350,7 @@ export default function ManagePractice({
               <div className="flex items-center justify-center p-4">
                 <div className="w-6 h-6 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
               </div>
-            ) : practices.length > 0 ? (
+            ) : practices && practices.length > 0 ? (
               <div className="overflow-y-auto flex-grow scrollbar-thin scrollbar-thumb-red-500/20 
                 hover:scrollbar-thumb-red-500/30 scrollbar-track-transparent pr-2">
                 <div className="grid grid-cols-1 gap-2">
@@ -538,6 +559,8 @@ export default function ManagePractice({
           </motion.div>
         </div>
       )}
+
+      
     </div>
   )
 } 
