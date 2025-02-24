@@ -14,7 +14,7 @@ interface EditGameProps {
 }
 
 export default function EditGame({ match, onBack, players, onUpdate }: EditGameProps) {
-  const [activeTab, setActiveTab] = useState<'result' | 'lineup' | 'events'>('result')
+  const [activeTab, setActiveTab] = useState<'result' | 'lineup' | 'goals' | 'subs' | 'cards'>('result')
   const [loading, setLoading] = useState(false)
   const [showSuccess, setShowSuccess] = useState(false)
   
@@ -47,10 +47,17 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
     { playerOutId: '', playerInId: '', minute: '' }
   ])
 
+  // For goals section
+  const [goals, setGoals] = useState<Array<{ scorerId: string; assistId: string }>>([
+    { scorerId: '', assistId: '' }
+  ])
+
   const tabs = [
     { id: 'result', label: 'Result', icon: Trophy },
     { id: 'lineup', label: 'Lineup', icon: Users },
-    { id: 'events', label: 'Events', icon: Goal },
+    { id: 'goals', label: 'Goals', icon: Goal },
+    { id: 'subs', label: 'Substitutions', icon: Clock },
+    { id: 'cards', label: 'Cards', icon: Award },
   ]
 
   // Filter players based on search term
@@ -103,6 +110,80 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
 
     fetchLineup()
   }, [match.matchid])
+
+useEffect(() => {
+  const fetchSubstitutions = async () => {
+    try {
+      console.log("Fetching substitutions for match:", match.matchid);
+      
+      const { data: subsData, error } = await supabase
+        .from('lineup')
+        .select('playerid, substitutein, substituteout')
+        .eq('matchid', match.matchid)
+        .or('substitutein.not.is.null,substituteout.not.is.null')
+            
+      if (error) {
+        console.error('Supabase error fetching substitutions:', error.message, error.details)
+        return
+      }
+      
+      console.log("Substitution data received:", subsData);
+      
+      if (subsData && subsData.length > 0) {
+        const loadedSubs: Array<{ playerOutId: string; playerInId: string; minute: string }> = [];
+        
+        // Group by minutes first
+        const subsByMinute = subsData.reduce((acc, sub) => {
+          if (sub.substituteout) {
+            if (!acc[sub.substituteout]) {
+              acc[sub.substituteout] = { out: [], in: [] };
+            }
+            acc[sub.substituteout].out.push(sub.playerid);
+          }
+          if (sub.substitutein) {
+            if (!acc[sub.substitutein]) {
+              acc[sub.substitutein] = { out: [], in: [] };
+            }
+            acc[sub.substitutein].in.push(sub.playerid);
+          }
+          return acc;
+        }, {} as Record<string, { out: number[]; in: number[] }>);
+
+        // Create sub entries for each minute
+        Object.entries(subsByMinute)
+          .sort(([minA], [minB]) => parseInt(minA) - parseInt(minB))
+          .forEach(([minute, players]) => {
+            // Match each out player with an in player
+            players.out.forEach((outId, index) => {
+              if (players.in[index]) {
+                loadedSubs.push({
+                  playerOutId: outId.toString(),
+                  playerInId: players.in[index].toString(),
+                  minute: minute
+                });
+              }
+            });
+          });
+        
+        console.log("Processed subs:", loadedSubs);
+        
+        // Only add empty row if we have less than 5 subs
+        if (loadedSubs.length < 5) {
+          loadedSubs.push({ playerOutId: '', playerInId: '', minute: '' });
+        }
+        setSubs(loadedSubs);
+      } else {
+        setSubs([{ playerOutId: '', playerInId: '', minute: '' }]);
+      }
+    } catch (error: any) {
+      console.error('Error fetching substitutions:', error?.message || 'Unknown error');
+    }
+  }
+  
+  if (!isLoadingLineup) {
+    fetchSubstitutions();
+  }
+}, [match.matchid, isLoadingLineup]);
 
   const handleSaveResult = async () => {
     if (!homeScore || !awayScore) return
@@ -187,11 +268,12 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
     const newSubs = [...subs]
     newSubs[index] = { ...newSubs[index], [field]: value }
     
-    // Add new row if last row has all fields filled
+    // Add new row if last row has all fields filled and we have less than 5 subs
     if (index === subs.length - 1 && 
         newSubs[index].playerOutId && 
         newSubs[index].playerInId && 
-        newSubs[index].minute) {
+        newSubs[index].minute && 
+        subs.length < 5) {
       newSubs.push({ playerOutId: '', playerInId: '', minute: '' })
     }
     
@@ -201,6 +283,106 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
     )
     
     setSubs(filteredSubs)
+  }
+
+  const handleGoalChange = (index: number, field: 'scorerId' | 'assistId', value: string) => {
+    const newGoals = [...goals]
+    newGoals[index] = { ...newGoals[index], [field]: value }
+    
+    // Add new row if last row has scorer filled
+    if (index === goals.length - 1 && field === 'scorerId' && value) {
+      newGoals.push({ scorerId: '', assistId: '' })
+    }
+    
+    setGoals(newGoals)
+  }
+
+  // Add this function to handle saving the lineup
+  const handleSaveLineup = async () => {
+    if (selectedStarters.length === 0) return;
+    
+    setLoading(true);
+    try {
+      // First delete any existing lineup for this match
+      await supabase
+        .from('lineup')
+        .delete()
+        .eq('matchid', match.matchid);
+      
+      // Then insert starters
+      const starterRows = selectedStarters.map(playerId => ({
+        matchid: match.matchid,
+        playerid: playerId,
+        isstarter: true
+      }));
+      
+      // Insert subs
+      const subRows = selectedSubs.map(playerId => ({
+        matchid: match.matchid,
+        playerid: playerId,
+        isstarter: false
+      }));
+      
+      // Combine and insert all
+      const { error } = await supabase
+        .from('lineup')
+        .insert([...starterRows, ...subRows]);
+        
+      if (error) throw error;
+      
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      onUpdate();
+    } catch (error) {
+      console.error('Error saving lineup:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Update the save function to match the correct field names
+  const handleSaveSubs = async () => {
+    setLoading(true)
+    try {
+      // First clear existing substitution data
+      const { error: updateError } = await supabase
+        .from('lineup')
+        .update({ substitutein: null, substituteout: null })
+        .eq('matchid', match.matchid)
+        
+      if (updateError) throw updateError
+      
+      // Then update with new substitution data
+      for (const sub of subs) {
+        if (sub.playerOutId && sub.playerInId && sub.minute) {
+          // Update player going out
+          const { error: outError } = await supabase
+            .from('lineup')
+            .update({ substituteout: sub.minute })
+            .eq('matchid', match.matchid)
+            .eq('playerid', sub.playerOutId)
+            
+          if (outError) throw outError
+          
+          // Update player coming in
+          const { error: inError } = await supabase
+            .from('lineup')
+            .update({ substitutein: sub.minute })
+            .eq('matchid', match.matchid)
+            .eq('playerid', sub.playerInId)
+            
+          if (inError) throw inError
+        }
+      }
+      
+      setShowSuccess(true)
+      setTimeout(() => setShowSuccess(false), 2000)
+      onUpdate()
+    } catch (error) {
+      console.error('Error saving substitutions:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -347,17 +529,35 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
                   </span>
                 )}
               </div>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search players..."
-                  className="pl-9 pr-4 py-2 bg-black/20 border border-white/5 rounded-xl 
-                    text-sm text-white placeholder-gray-400 focus:outline-none 
-                    focus:border-red-500/50 w-64"
-                />
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder="Search players..."
+                    className="pl-9 pr-4 py-2 bg-black/20 border border-white/5 rounded-xl 
+                      text-sm text-white placeholder-gray-400 focus:outline-none 
+                      focus:border-red-500/50 w-64"
+                  />
+                </div>
+                <motion.button
+                  onClick={handleSaveLineup}
+                  disabled={loading || selectedStarters.length === 0}
+                  className="px-4 py-2 bg-red-500/10 hover:bg-red-500/20 
+                    rounded-xl text-red-400 text-sm font-medium transition-colors 
+                    flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {showSuccess ? (
+                    <Check className="w-4 h-4" />
+                  ) : (
+                    <Save className="w-4 h-4" />
+                  )}
+                  {loading ? 'Saving...' : showSuccess ? 'Saved!' : 'Save Lineup'}
+                </motion.button>
               </div>
             </div>
 
@@ -423,100 +623,141 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
             </div>
           </div>
         )}
-        {activeTab === 'events' && (
-          <div className="space-y-8 overflow-y-auto max-h-[calc(100vh-300px)] pr-2">
-            {/* Goals Section */}
-            <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
-              <h3 className="text-lg font-medium text-white mb-6">Goals</h3>
-              {patronScore > 0 ? (
-                <div className="space-y-4">
-                  {Array.from({ length: patronScore }).map((_, index) => (
-                    <div key={index} className="flex items-center gap-4">
-                      <span className="text-gray-400 text-sm font-medium w-16">
-                        Goal {index + 1}
-                      </span>
-                      <select
-                        className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                          rounded-xl text-sm text-white focus:outline-none 
-                          focus:border-red-500/50"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Select scorer</option>
-                        {availablePlayers.map(player => (
-                          <option key={player.ID} value={player.ID}>
-                            {player.Name}
-                          </option>
-                        ))}
-                      </select>
-                      <select
-                        className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                          rounded-xl text-sm text-white focus:outline-none 
-                          focus:border-red-500/50"
-                        defaultValue=""
-                      >
-                        <option value="" disabled>Select assist (optional)</option>
-                        <option value="">No assist</option>
-                        {availablePlayers.map(player => (
-                          <option key={player.ID} value={player.ID}>
-                            {player.Name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ))}
+        {activeTab === 'goals' && (
+          <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
+            <h3 className="text-lg font-medium text-white mb-6">Goals</h3>
+            <div className="space-y-4">
+              {goals.map((goal, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <span className="text-gray-400 text-sm font-medium w-16">
+                    Goal {index + 1}
+                  </span>
+                  <select
+                    value={goal.scorerId}
+                    onChange={(e) => handleGoalChange(index, 'scorerId', e.target.value)}
+                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  >
+                    <option value="" disabled>Select scorer</option>
+                    {availablePlayers.map(player => (
+                      <option key={player.ID} value={player.ID}>
+                        {player.Name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={goal.assistId}
+                    onChange={(e) => handleGoalChange(index, 'assistId', e.target.value)}
+                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  >
+                    <option value="" disabled>Select assist (optional)</option>
+                    <option value="">No assist</option>
+                    {availablePlayers.map(player => (
+                      <option key={player.ID} value={player.ID}>
+                        {player.Name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-              ) : (
-                <div className="text-center text-gray-400 text-sm py-4">
-                  No goals to record
+              ))}
+            </div>
+            
+            <div className="flex justify-center mt-8">
+              <motion.button
+                onClick={() => {/* Save goals logic */}}
+                className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 
+                  rounded-xl text-red-400 text-sm font-medium transition-colors 
+                  flex items-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Save className="w-4 h-4" />
+                Save Goals
+              </motion.button>
+            </div>
+          </div>
+        )}
+        {activeTab === 'cards' && (
+          <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
+            <h3 className="text-lg font-medium text-white mb-6">Cards</h3>
+            <div className="space-y-4">
+              {cards.map((card, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <span className="text-gray-400 text-sm font-medium w-16">
+                    Card {index + 1}
+                  </span>
+                  <select
+                    value={card.playerId}
+                    onChange={(e) => handleCardChange(index, 'playerId', e.target.value)}
+                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  >
+                    <option value="" disabled>Select player</option>
+                    {availablePlayers.map(player => (
+                      <option key={player.ID} value={player.ID}>
+                        {player.Name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={card.type}
+                    onChange={(e) => handleCardChange(index, 'type', e.target.value)}
+                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  >
+                    <option value="" disabled>Select card type</option>
+                    <option value="yellow">Yellow Card</option>
+                    <option value="red">Red Card</option>
+                    <option value="second_yellow">Second Yellow Card</option>
+                  </select>
                 </div>
-              )}
+              ))}
             </div>
-
-            {/* Cards Section */}
-            <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
-              <h3 className="text-lg font-medium text-white mb-6">Cards</h3>
-              <div className="space-y-4">
-                {cards.map((card, index) => (
-                  <div key={index} className="flex items-center gap-4">
-                    <span className="text-gray-400 text-sm font-medium w-16">
-                      Card {index + 1}
-                    </span>
-                    <select
-                      value={card.playerId}
-                      onChange={(e) => handleCardChange(index, 'playerId', e.target.value)}
-                      className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                        rounded-xl text-sm text-white focus:outline-none 
-                        focus:border-red-500/50"
-                    >
-                      <option value="" disabled>Select player</option>
-                      {availablePlayers.map(player => (
-                        <option key={player.ID} value={player.ID}>
-                          {player.Name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      value={card.type}
-                      onChange={(e) => handleCardChange(index, 'type', e.target.value)}
-                      className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                        rounded-xl text-sm text-white focus:outline-none 
-                        focus:border-red-500/50"
-                    >
-                      <option value="" disabled>Select card type</option>
-                      <option value="yellow">Yellow Card</option>
-                      <option value="red">Red Card</option>
-                      <option value="second_yellow">Second Yellow Card</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
+            
+            <div className="flex justify-center mt-8">
+              <motion.button
+                onClick={() => {/* Save cards logic */}}
+                className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 
+                  rounded-xl text-red-400 text-sm font-medium transition-colors 
+                  flex items-center gap-2"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                <Save className="w-4 h-4" />
+                Save Cards
+              </motion.button>
             </div>
+          </div>
+        )}
+        {activeTab === 'subs' && (
+          <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
+            <h3 className="text-lg font-medium text-white mb-6">Substitutions</h3>
+            <div className="space-y-4">
+              {subs.map((sub, index) => {
+                // Get all players used in previous rows (different minutes)
+                const previouslyUsedPlayers = subs
+                  .slice(0, index)
+                  .filter(s => s.minute !== sub.minute) // Only exclude players from different minutes
+                  .flatMap(s => [s.playerOutId, s.playerInId]);
+                
+                // Filter available starters excluding previously used players
+                const availableStarters = selectedStarters
+                  .filter(id => !previouslyUsedPlayers.includes(id.toString()))
+                  .map(id => players.find(p => p.ID === id))
+                  .filter((p): p is Player => p !== undefined);
+                
+                // Filter available subs excluding previously used players
+                const availableSubs = selectedSubs
+                  .filter(id => !previouslyUsedPlayers.includes(id.toString()))
+                  .map(id => players.find(p => p.ID === id))
+                  .filter((p): p is Player => p !== undefined);
 
-            {/* Substitutions Section */}
-            <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
-              <h3 className="text-lg font-medium text-white mb-6">Substitutions</h3>
-              <div className="space-y-4">
-                {subs.map((sub, index) => (
+                return (
                   <div key={index} className="flex items-center gap-4">
                     <span className="text-gray-400 text-sm font-medium w-16">
                       Sub {index + 1}
@@ -529,14 +770,11 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
                         focus:border-red-500/50"
                     >
                       <option value="" disabled>Player Out</option>
-                      {selectedStarters.map(id => {
-                        const player = players.find(p => p.ID === id)
-                        return player ? (
-                          <option key={player.ID} value={player.ID}>
-                            {player.Name}
-                          </option>
-                        ) : null
-                      })}
+                      {availableStarters.map(player => (
+                        <option key={player.ID} value={player.ID}>
+                          {player.Name}
+                        </option>
+                      ))}
                     </select>
                     <select
                       value={sub.playerInId}
@@ -546,14 +784,11 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
                         focus:border-red-500/50"
                     >
                       <option value="" disabled>Player In</option>
-                      {selectedSubs.map(id => {
-                        const player = players.find(p => p.ID === id)
-                        return player ? (
-                          <option key={player.ID} value={player.ID}>
-                            {player.Name}
-                          </option>
-                        ) : null
-                      })}
+                      {availableSubs.map(player => (
+                        <option key={player.ID} value={player.ID}>
+                          {player.Name}
+                        </option>
+                      ))}
                     </select>
                     <input
                       type="number"
@@ -567,21 +802,26 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
                         focus:border-red-500/50"
                     />
                   </div>
-                ))}
-              </div>
+                );
+              })}
             </div>
-
-            <div className="flex justify-center mt-8 sticky bottom-0 pb-6 pt-4 bg-gradient-to-t from-black/50">
+            
+            <div className="flex justify-center mt-8">
               <motion.button
-                onClick={() => {/* Save events logic */}}
+                onClick={handleSaveSubs}
+                disabled={loading || subs.length === 1 && !subs[0].playerOutId}
                 className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 
                   rounded-xl text-red-400 text-sm font-medium transition-colors 
-                  flex items-center gap-2"
+                  flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Save className="w-4 h-4" />
-                Save Events
+                {showSuccess ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {loading ? 'Saving...' : showSuccess ? 'Saved!' : 'Save Substitutions'}
               </motion.button>
             </div>
           </div>

@@ -92,7 +92,7 @@ export default function SeasonalAchievements() {
   const achievements = [
     { 
       icon: Crown, 
-      label: "Unbeaten Run", 
+      label: "Best Unbeaten Run", 
       count: unbeatenRun, 
       description: unbeatenRunPeriod 
     },

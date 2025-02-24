@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import TeamStats from '@/components/records/TeamStats'
 import PlayerRecords from '@/components/records/PlayerRecords'
 import SeasonalAchievements from '@/components/records/SeasonalAchievements'
+import Awards from '@/components/records/Awards'
 
 export default function Records() {
   const [isClient, setIsClient] = useState(false)
@@ -79,7 +80,7 @@ export default function Records() {
         </AnimatePresence>
       </div>
 
-      <div className="relative w-full max-w-7xl mx-auto">
+      <div className="relative w-full max-w-7xl mx-auto space-y-6">
         <motion.div 
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           variants={itemVariants}
@@ -100,6 +101,11 @@ export default function Records() {
               <PlayerRecords />
             </motion.div>
           </div>
+        </motion.div>
+
+        {/* Awards Section at bottom */}
+        <motion.div variants={itemVariants}>
+          <Awards />
         </motion.div>
       </div>
     </motion.main>

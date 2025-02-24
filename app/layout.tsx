@@ -7,7 +7,8 @@ const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
   title: 'FC Patron',
-  description: 'Football Club Management System',
+  description: 'Official website of FC Patron',
+  manifest: '/manifest.json',
 }
 
 export default function RootLayout({

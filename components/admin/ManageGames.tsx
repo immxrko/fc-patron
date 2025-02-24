@@ -122,8 +122,9 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
       return match.result === null && new Date(match.date) >= new Date()
     }
 
-    // Default view: only show played matches
-    return match.result !== null
+    // Default view: show played matches AND past matches with null results
+    return match.result !== null || 
+           (match.result === null && new Date(match.date) < new Date())
   })
 
   // Sort only if showing not played matches
@@ -156,6 +157,27 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
 
     return Object.entries(groups)
   }
+
+  const getResultIndicator = (match: MatchDetail) => {
+    if (!match.result) return null;
+    
+    // Result is always stored from FC Patron's perspective
+    const [patronScore, opponentScore] = match.result.split(':').map(Number);
+    
+    if (patronScore > opponentScore) {
+      return (
+        <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-green-500" />
+      );
+    } else if (patronScore < opponentScore) {
+      return (
+        <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-red-500" />
+      );
+    } else {
+      return (
+        <div className="absolute top-3 right-3 w-2 h-2 rounded-full bg-orange-500" />
+      );
+    }
+  };
 
   return (
     <AnimatePresence mode="wait">
@@ -341,6 +363,7 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                               Lineup Missing
                             </div>
                           )}
+                          {getResultIndicator(match)}
                         </motion.div>
                       ))}
                     </div>
