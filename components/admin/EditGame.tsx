@@ -42,7 +42,9 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
   const [selectedSubs, setSelectedSubs] = useState<number[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [isLoadingLineup, setIsLoadingLineup] = useState(true)
-  const [cards, setCards] = useState<Array<{ playerId: string; type: string }>>([{ playerId: '', type: '' }])
+  const [cards, setCards] = useState<Array<{ playerId: string; type: string }>>([
+    { playerId: '', type: '' }
+  ])
   const [subs, setSubs] = useState<Array<{ playerOutId: string; playerInId: string; minute: string }>>([
     { playerOutId: '', playerInId: '', minute: '' }
   ])
@@ -385,6 +387,193 @@ useEffect(() => {
     }
   }
 
+  useEffect(() => {
+    const fetchCards = async () => {
+      try {
+        console.log("Fetching cards for match:", match.matchid);
+        
+        const { data: cardsData, error } = await supabase
+          .from('cards')
+          .select('*')
+          .eq('matchid', match.matchid)
+          .order('playerid');
+  
+        if (error) {
+          console.error('Error fetching cards:', error);
+          return;
+        }
+  
+        console.log("Raw cards data:", cardsData);
+        // Log each player ID as we process it
+        cardsData?.forEach(card => {
+          console.log("Processing player ID:", card.playerid, "Type:", typeof card.playerid);
+        });
+  
+        if (cardsData && cardsData.length > 0) {
+          const loadedCards = cardsData.map(card => {
+            const cardData = {
+              playerId: String(card.playerid),
+              type: 'yellow'
+            };
+            console.log("Created card data:", cardData);
+            return cardData;
+          });
+  
+          console.log("Final processed cards:", loadedCards);
+  
+          loadedCards.push({ playerId: '', type: '' });
+          console.log("Setting cards state to:", loadedCards);
+          setCards(loadedCards);
+        } else {
+          setCards([{ playerId: '', type: '' }]);
+        }
+      } catch (error) {
+        console.error('Error loading cards:', error);
+      }
+    };
+  
+    fetchCards();
+  }, [match.matchid]);
+  // Add function to save cards
+  const handleSaveCards = async () => {
+    setLoading(true);
+    try {
+      // First delete existing cards
+      await supabase
+        .from('cards')
+        .delete()
+        .eq('matchid', match.matchid);
+
+      // Filter out empty rows and the last empty row
+      const cardsToSave = cards.filter(card => card.playerId && card.type);
+
+      // Insert new cards
+      const { error } = await supabase
+        .from('cards')
+        .insert(cardsToSave.map(card => ({
+          matchid: match.matchid,
+          playerid: parseInt(card.playerId),
+          isred: card.type === 'red',
+          issecondyellow: card.type === 'second_yellow'
+        })));
+
+      if (error) throw error;
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      onUpdate();
+    } catch (error) {
+      console.error('Error saving cards:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Add useEffect to fetch existing goals and assists
+  useEffect(() => {
+    const fetchGoals = async () => {
+      try {
+        console.log("Fetching goals for match:", match.matchid);
+        
+        // Fetch goals
+        const { data: goalsData, error: goalsError } = await supabase
+          .from('goals')
+          .select('*')
+          .eq('matchid', match.matchid)
+          .order('id');
+
+        if (goalsError) {
+          console.error('Error fetching goals:', goalsError);
+          return;
+        }
+
+        // Fetch assists
+        const { data: assistsData, error: assistsError } = await supabase
+          .from('assists')
+          .select('*')
+          .eq('matchid', match.matchid)
+          .order('id');
+
+        if (assistsError) {
+          console.error('Error fetching assists:', assistsError);
+          return;
+        }
+
+        console.log("Goals data:", goalsData, "Assists data:", assistsData);
+
+        if (goalsData && goalsData.length > 0) {
+          const loadedGoals = goalsData.map((goal, index) => ({
+            scorerId: String(goal.playerid),
+            assistId: assistsData && assistsData[index] 
+              ? String(assistsData[index].playerid) 
+              : ''
+          }));
+
+          // Add empty row for new entry
+          loadedGoals.push({ scorerId: '', assistId: '' });
+          setGoals(loadedGoals);
+        }
+      } catch (error) {
+        console.error('Error loading goals:', error);
+      }
+    };
+
+    fetchGoals();
+  }, [match.matchid]);
+
+  // Add function to save goals
+  const handleSaveGoals = async () => {
+    setLoading(true);
+    try {
+      // First delete existing goals and assists
+      await supabase
+        .from('goals')
+        .delete()
+        .eq('matchid', match.matchid);
+
+      await supabase
+        .from('assists')
+        .delete()
+        .eq('matchid', match.matchid);
+
+      // Filter out empty rows and the last empty row
+      const goalsToSave = goals.filter(goal => goal.scorerId);
+
+      // Insert new goals
+      for (const goal of goalsToSave) {
+        // Insert goal
+        const { error: goalError } = await supabase
+          .from('goals')
+          .insert({
+            matchid: match.matchid,
+            playerid: parseInt(goal.scorerId)
+          });
+
+        if (goalError) throw goalError;
+
+        // Insert assist if exists
+        if (goal.assistId) {
+          const { error: assistError } = await supabase
+            .from('assists')
+            .insert({
+              matchid: match.matchid,
+              playerid: parseInt(goal.assistId)
+            });
+
+          if (assistError) throw assistError;
+        }
+      }
+
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+      onUpdate();
+    } catch (error) {
+      console.error('Error saving goals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="h-full p-6 space-y-6">
       {/* Header */}
@@ -667,15 +856,20 @@ useEffect(() => {
             
             <div className="flex justify-center mt-8">
               <motion.button
-                onClick={() => {/* Save goals logic */}}
+                onClick={handleSaveGoals}
+                disabled={loading || goals.length === 1 && !goals[0].scorerId}
                 className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 
                   rounded-xl text-red-400 text-sm font-medium transition-colors 
-                  flex items-center gap-2"
+                  flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Save className="w-4 h-4" />
-                Save Goals
+                {showSuccess ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {loading ? 'Saving...' : showSuccess ? 'Saved!' : 'Save Goals'}
               </motion.button>
             </div>
           </div>
@@ -684,52 +878,66 @@ useEffect(() => {
           <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
             <h3 className="text-lg font-medium text-white mb-6">Cards</h3>
             <div className="space-y-4">
-              {cards.map((card, index) => (
-                <div key={index} className="flex items-center gap-4">
-                  <span className="text-gray-400 text-sm font-medium w-16">
-                    Card {index + 1}
-                  </span>
-                  <select
-                    value={card.playerId}
-                    onChange={(e) => handleCardChange(index, 'playerId', e.target.value)}
-                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                      rounded-xl text-sm text-white focus:outline-none 
-                      focus:border-red-500/50"
-                  >
-                    <option value="" disabled>Select player</option>
-                    {availablePlayers.map(player => (
-                      <option key={player.ID} value={player.ID}>
-                        {player.Name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={card.type}
-                    onChange={(e) => handleCardChange(index, 'type', e.target.value)}
-                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                      rounded-xl text-sm text-white focus:outline-none 
-                      focus:border-red-500/50"
-                  >
-                    <option value="" disabled>Select card type</option>
-                    <option value="yellow">Yellow Card</option>
-                    <option value="red">Red Card</option>
-                    <option value="second_yellow">Second Yellow Card</option>
-                  </select>
-                </div>
-              ))}
+              {cards.map((card, index) => {
+                console.log("Rendering card:", card, "Available players:", availablePlayers);
+                return (
+                  <div key={index} className="flex items-center gap-4">
+                    <span className="text-gray-400 text-sm font-medium w-16">
+                      Card {index + 1}
+                    </span>
+                    <select
+                      value={card.playerId}
+                      onChange={(e) => {
+                        console.log("Changing player ID to:", e.target.value);
+                        handleCardChange(index, 'playerId', e.target.value);
+                      }}
+                      className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                        rounded-xl text-sm text-white focus:outline-none 
+                        focus:border-red-500/50"
+                    >
+                      <option value="" disabled>Select player</option>
+                      {availablePlayers.map(player => {
+                        console.log("Option:", player.ID, player.Name, "Selected:", card.playerId);
+                        return (
+                          <option key={player.ID} value={String(player.ID)}>
+                            {player.Name}
+                          </option>
+                        );
+                      })}
+                    </select>
+                    <select
+                      value={card.type}
+                      onChange={(e) => handleCardChange(index, 'type', e.target.value)}
+                      className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                        rounded-xl text-sm text-white focus:outline-none 
+                        focus:border-red-500/50"
+                    >
+                      <option value="" disabled>Select card type</option>
+                      <option value="yellow">Yellow Card</option>
+                      <option value="red">Red Card</option>
+                      <option value="second_yellow">Second Yellow Card</option>
+                    </select>
+                  </div>
+                );
+              })}
             </div>
             
             <div className="flex justify-center mt-8">
               <motion.button
-                onClick={() => {/* Save cards logic */}}
+                onClick={handleSaveCards}
+                disabled={loading || cards.length === 1 && !cards[0].playerId}
                 className="px-6 py-2 bg-red-500/10 hover:bg-red-500/20 
                   rounded-xl text-red-400 text-sm font-medium transition-colors 
-                  flex items-center gap-2"
+                  flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Save className="w-4 h-4" />
-                Save Cards
+                {showSuccess ? (
+                  <Check className="w-4 h-4" />
+                ) : (
+                  <Save className="w-4 h-4" />
+                )}
+                {loading ? 'Saving...' : showSuccess ? 'Saved!' : 'Save Cards'}
               </motion.button>
             </div>
           </div>
