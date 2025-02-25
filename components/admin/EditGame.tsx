@@ -54,6 +54,9 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
     { scorerId: '', assistId: '' }
   ])
 
+  // Add state for showing inactive players
+  const [showInactive, setShowInactive] = useState(false);
+
   const tabs = [
     { id: 'result', label: 'Result', icon: Trophy },
     { id: 'lineup', label: 'Lineup', icon: Users },
@@ -62,10 +65,10 @@ export default function EditGame({ match, onBack, players, onUpdate }: EditGameP
     { id: 'cards', label: 'Cards', icon: Award },
   ]
 
-  // Filter players based on search term
+  // Update the player filtering section
   const filteredPlayers = players.filter(player => 
     player.Name.toLowerCase().includes(searchTerm.toLowerCase()) &&
-    player.isActive
+    (showInactive || player.isActive)
   )
 
   // Sort players by position with correct mapping
@@ -717,6 +720,19 @@ useEffect(() => {
                     +{selectedSubs.length}
                   </span>
                 )}
+                <motion.button
+                  onClick={() => setShowInactive(!showInactive)}
+                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors 
+                    flex items-center gap-2 ${
+                      showInactive
+                        ? 'bg-yellow-500/10 text-yellow-400'
+                        : 'bg-black/20 text-gray-400 hover:bg-black/40'
+                    }`}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {showInactive ? 'Hide Inactive' : 'Show Inactive'}
+                </motion.button>
               </div>
               <div className="flex items-center gap-3">
                 <div className="relative">
