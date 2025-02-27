@@ -33,32 +33,6 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
     '2024/25': '24'
   }), [])  // Empty dependency array since this object never changes
 
-  // Get stats based on season and team
-  const getPlayerStats = (player: any) => {
-    if (selectedSeason === 'All Seasons') {
-      console.log('Player data:', player); // Debug log
-      
-      const seasons = ['2021/22', '2022/23', '2023/24', '2024/25'];
-      const totalGames = seasons.reduce((sum, season) => sum + (player[season] || 0), 0);
-      const totalGoals = seasons.reduce((sum, season) => sum + (player[`goals_${season}`] || 0), 0);
-      const totalAssists = seasons.reduce((sum, season) => sum + (player[`assists_${season}`] || 0), 0);
-      
-      console.log('Totals:', { totalGames, totalGoals, totalAssists }); // Debug log
-      
-      return {
-        games: totalGames,
-        goals: totalGoals,
-        assists: totalAssists
-      }
-    }
-
-    return {
-      games: player[selectedSeason] || 0,
-      goals: player[`goals_${selectedSeason}`] || 0,
-      assists: player[`assists_${selectedSeason}`] || 0
-    }
-  }
-
   // Add this helper function at the top of the component
   const getLastName = (fullName: string) => {
     // Find the word that's in all caps
@@ -69,76 +43,87 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
 
   useEffect(() => {
     async function fetchPlayers() {
-      const { data: appearanceData, error: appearanceError } = await supabase
-        .from('player_appearances')
-        .select('*')
-        .eq('km_res', selectedTeam === 'first-team' ? 'KM' : 'RES')
+      console.log('Fetching players for:', {
+        team: selectedTeam,
+        season: selectedSeason
+      });
 
-      if (appearanceError) {
-        console.error('Error fetching appearances:', appearanceError)
-        return
+      const { data: squadData, error } = await supabase
+        .from('squad_details_view')
+        .select('*')
+        .eq('km_res', selectedTeam === 'first-team' ? 'KM' : 'RES');
+
+      if (error) {
+        console.error('Error fetching squad data:', error);
+        return;
       }
 
-      const { data: statsData, error: statsError } = await supabase
-        .from('player_stats')
-        .select('*')
-        .eq('km_res', selectedTeam === 'first-team' ? 'KM' : 'RES')
+      console.log('Raw squad data:', squadData);
 
-      if (statsError) {
-        console.error('Error fetching stats:', statsError)
-        return
-      }
-
-      const processedData = appearanceData?.map(player => {
-        const playerStats = statsData?.find(stat => stat.playerid === player.playerid) || {}
+      // Process the data
+      const processedData = squadData?.reduce((acc: any[], player) => {
+        console.log('Processing player:', player);
         
-        return {
-          ID: player.playerid,
-          Name: player.player_name,
-          Position: player.position,
-          BildURL: player.bildurl,
-          KM_Res_Beides: player.km_res,
-          // Map season data for appearances
-          ...player,
-          // Add stats data with exact column names for each season
-          'goals_2021/22': playerStats['goals_2021/22'] || 0,
-          'goals_2022/23': playerStats['goals_2022/23'] || 0,
-          'goals_2023/24': playerStats['goals_2023/24'] || 0,
-          'goals_2024/25': playerStats['goals_2024/25'] || 0,
-          'assists_2021/22': playerStats['assists_2021/22'] || 0,
-          'assists_2022/23': playerStats['assists_2022/23'] || 0,
-          'assists_2023/24': playerStats['assists_2023/24'] || 0,
-          'assists_2024/25': playerStats['assists_2024/25'] || 0
+        const existingPlayer = acc.find(p => p.ID === player.playerid);
+        
+        if (existingPlayer) {
+          console.log('Updating existing player:', existingPlayer);
+          if (selectedSeason === 'All Seasons') {
+            existingPlayer.games += parseInt(player.games);
+            existingPlayer.goals += parseInt(player.goals);
+            existingPlayer.assists += parseInt(player.assists);
+          } else if (player.seasonname === selectedSeason) {
+            existingPlayer.games = parseInt(player.games);
+            existingPlayer.goals = parseInt(player.goals);
+            existingPlayer.assists = parseInt(player.assists);
+          }
+        } else {
+          const newPlayer = {
+            ID: player.playerid,
+            Name: player.playername,
+            Position: player.playerposition,
+            BildURL: player.playerbildurl,
+            games: selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.games) : 0,
+            goals: selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.goals) : 0,
+            assists: selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.assists) : 0
+          };
+          console.log('Adding new player:', newPlayer);
+          acc.push(newPlayer);
         }
-      }) || []
+        return acc;
+      }, []);
 
-      setPlayers(processedData)
-      setLoading(false)
+      console.log('Final processed data:', processedData);
+      setPlayers(processedData || []);
+      setLoading(false);
     }
 
-    fetchPlayers()
-  }, [selectedTeam, selectedSeason])
+    fetchPlayers();
+  }, [selectedTeam, selectedSeason]);
 
-  // Filter players before grouping
+  // Update the filtering logic
   const activePlayers = players.filter(player => {
-    if (selectedSeason === 'All Seasons') {
-      // Check if player has any games in any season
-      return ['2021/22', '2022/23', '2023/24', '2024/25'].some(season => 
-        player[season] > 0
-      )
-    }
-    // Check if player has games in selected season
-    return player[selectedSeason] > 0
-  })
+    const hasGames = player.games > 0;
+    const matchesSearchQuery = player.Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              player.Position.toLowerCase().includes(searchQuery.toLowerCase());
+    return hasGames && matchesSearchQuery;
+  });
 
-  // Group and sort filtered players by position
-  const positionOrder = ['GK', 'DEF', 'MID', 'ATT']
+  // Update the grouping and sorting logic
+  const positionOrder = ['GK', 'DEF', 'MID', 'ATT'];
   const groupedPlayers = positionOrder.map(pos => ({
     position: pos,
     players: activePlayers
       .filter(p => p.Position === pos)
-      .sort((a, b) => getLastName(a.Name).localeCompare(getLastName(b.Name)))
-  })).filter(group => group.players.length > 0)
+      .sort((a, b) => {
+        // First sort by games (descending)
+        if (b.games !== a.games) {
+          return b.games - a.games;
+        }
+        // If games are equal, sort by last name
+        return getLastName(a.Name).localeCompare(getLastName(b.Name));
+      })
+  })).filter(group => group.players.length > 0);
 
   const filteredGroups = groupedPlayers.map(group => ({
     position: group.position,
@@ -201,9 +186,13 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                     >
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <img
-                          src={player.BildURL}
+                          src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
                           alt={player.Name}
                           className="w-full h-full object-cover object-top rounded-lg"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-lg" />
                       </div>
@@ -220,17 +209,17 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
               
                         <div className="flex items-center gap-4 mt-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).games}</span>
+                            <span className="text-sm font-semibold text-white">{player.games}</span>
                             <span className="text-xs text-gray-400">Games</span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).goals}</span>
+                            <span className="text-sm font-semibold text-white">{player.goals}</span>
                             <span className="text-xs text-gray-400">Goals</span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).assists}</span>
+                            <span className="text-sm font-semibold text-white">{player.assists}</span>
                             <span className="text-xs text-gray-400">Assists</span>
                           </div>
                         </div>
@@ -268,9 +257,13 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                     >
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <img
-                          src={player.BildURL}
+                          src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
                           alt={player.Name}
                           className="w-full h-full object-cover object-top rounded-lg"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-lg" />
                   </div>
@@ -287,17 +280,17 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
 
                         <div className="flex items-center gap-4 mt-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).games}</span>
+                            <span className="text-sm font-semibold text-white">{player.games}</span>
                             <span className="text-xs text-gray-400">Games</span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).goals}</span>
+                            <span className="text-sm font-semibold text-white">{player.goals}</span>
                             <span className="text-xs text-gray-400">Goals</span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).assists}</span>
+                            <span className="text-sm font-semibold text-white">{player.assists}</span>
                             <span className="text-xs text-gray-400">Assists</span>
                           </div>
                         </div>
@@ -335,9 +328,13 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                     >
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <img
-                          src={player.BildURL}
+                          src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
                           alt={player.Name}
                           className="w-full h-full object-cover object-top rounded-lg"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                          }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-lg" />
                       </div>
@@ -354,17 +351,17 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
 
                         <div className="flex items-center gap-4 mt-1">
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).games}</span>
+                            <span className="text-sm font-semibold text-white">{player.games}</span>
                             <span className="text-xs text-gray-400">Games</span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).goals}</span>
+                            <span className="text-sm font-semibold text-white">{player.goals}</span>
                             <span className="text-xs text-gray-400">Goals</span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{getPlayerStats(player).assists}</span>
+                            <span className="text-sm font-semibold text-white">{player.assists}</span>
                             <span className="text-xs text-gray-400">Assists</span>
             </div>
                         </div>

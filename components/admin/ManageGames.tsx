@@ -37,6 +37,7 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
   const [matches, setMatches] = useState<MatchDetail[]>([])
   const [showNotPlayed, setShowNotPlayed] = useState(false)
   const [selectedMatch, setSelectedMatch] = useState<MatchDetail | null>(null)
+  const [needsRefetch, setNeedsRefetch] = useState(false)
   
   // Add cache ref to store fetched matches
   const matchesCache = useRef<{
@@ -45,12 +46,20 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
 
   useEffect(() => {
     fetchSeasons()
-    fetchMatches()
   }, [])
 
   useEffect(() => {
-    fetchMatches()
-  }, [selectedSeason, showNotPlayed])
+    if (needsRefetch || selectedSeason || showNotPlayed) {
+      console.log('Refetch triggered by:', {
+        needsRefetch,
+        selectedSeason,
+        showNotPlayed,
+        timestamp: new Date().toISOString()
+      });
+      fetchMatches()
+      setNeedsRefetch(false)
+    }
+  }, [selectedSeason, showNotPlayed, needsRefetch])
 
   const fetchSeasons = async () => {
     const { data, error } = await supabase
@@ -79,6 +88,12 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
 
   const fetchMatches = async () => {
     try {
+      console.log('Fetching matches for:', {
+        season: selectedSeason,
+        showNotPlayed,
+        timestamp: new Date().toISOString()
+      });
+
       // Check if we have cached data for this season
       const cacheKey = `${selectedSeason}-${showNotPlayed}`
       if (matchesCache.current[cacheKey]) {
@@ -101,6 +116,10 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
       if (error) throw error
       
       if (data) {
+        console.log('Matches fetched successfully:', {
+          count: data.length,
+          timestamp: new Date().toISOString()
+        });
         // Store in cache with combined key
         matchesCache.current[cacheKey] = data
         setMatches(data)
@@ -192,11 +211,13 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
         >
           <EditGame 
             match={selectedMatch}
-            onBack={() => setSelectedMatch(null)}
+            onBack={() => {
+              setSelectedMatch(null)
+              setNeedsRefetch(true) // Trigger refetch when returning
+            }}
             players={players}
             onUpdate={() => {
-              matchesCache.current = {} // Clear cache to refresh data
-              fetchMatches() // Refresh the matches list
+              setNeedsRefetch(true) // Also trigger refetch on updates
             }}
           />
         </motion.div>
@@ -273,8 +294,7 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                         onClick={() => {
                           setSelectedSeason(season.name)
                           setIsSeasonDropdownOpen(false)
-                          // Clear cache and reset showNotPlayed when changing season
-                          matchesCache.current = {}
+                          setNeedsRefetch(true)
                           if (!isNewestSeason()) {
                             setShowNotPlayed(false)
                           }

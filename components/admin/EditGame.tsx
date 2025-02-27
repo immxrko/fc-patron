@@ -785,12 +785,12 @@ useEffect(() => {
                   >
                     <div className="flex items-center gap-3">
                       <img
-                        src={player.BildURL || 'https://via.placeholder.com/40'}
+                        src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
                         alt={player.Name}
                         className="w-10 h-10 rounded-lg object-cover bg-black/20"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.src = 'https://via.placeholder.com/40';
+                          target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
                         }}
                       />
                       <div>

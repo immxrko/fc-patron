@@ -23,7 +23,7 @@ interface MatchProps {
     }
     matchtypeid?: number
   }
-  onMatchComplete: () => void
+  onMatchComplete: (date?: string) => void
 }
 
 interface WeatherData {
@@ -66,7 +66,11 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
       
       if (difference <= 0) {
         clearInterval(timer)
-        onMatchComplete()
+        // Set tomorrow as the new date to find next match
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        tomorrow.setHours(0, 0, 0, 0) // Reset to start of day
+        onMatchComplete(tomorrow.toISOString().split('T')[0]) // Pass the new date
         return
       }
       
@@ -220,10 +224,10 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
       </motion.div>
 
       {/* Teams */}
-      <div className="flex items-center justify-between gap-4 mb-8">
+      <div className="flex items-center justify-between gap-2 md:gap-4 mb-8">
         {/* Home Team */}
         <motion.div 
-          className="flex-1 flex flex-col items-center"
+          className="flex-1 flex flex-col items-center min-w-0"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
@@ -233,12 +237,13 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
               ? "https://www.oefb.at/oefb2/images/1278650591628556536_a80345e52fc58947d7af-1,0-320x320.png"
               : match.opponent?.logourl}
             alt={match.ishomegame ? "FC Patron" : match.opponent?.name}
-            className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4"
+            className="w-20 h-20 md:w-32 md:h-32 object-contain mb-4"
+            style={{ maxWidth: '80px', maxHeight: '80px' }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
           />
-          <h3 className="text-xl md:text-2xl font-bold text-white text-center">
+          <h3 className="text-xs md:text-2xl font-bold text-white text-center">
             {match.ishomegame ? "FC Patron" : match.opponent?.name}
           </h3>
           {match.matchtypeid !== 1 && (
@@ -250,7 +255,7 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
 
         {/* VS Section */}
         <motion.div 
-          className="flex-shrink-0 flex flex-col items-center justify-center w-32 md:w-40"
+          className="flex-shrink-0 flex flex-col items-center justify-center w-24 md:w-40"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
@@ -273,7 +278,7 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
 
         {/* Away Team */}
         <motion.div 
-          className="flex-1 flex flex-col items-center"
+          className="flex-1 flex flex-col items-center min-w-0"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
@@ -283,12 +288,13 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
               ? "https://www.oefb.at/oefb2/images/1278650591628556536_a80345e52fc58947d7af-1,0-320x320.png"
               : match.opponent?.logourl}
             alt={!match.ishomegame ? "FC Patron" : match.opponent?.name}
-            className="w-24 h-24 md:w-32 md:h-32 object-contain mb-4"
+            className="w-20 h-20 md:w-32 md:h-32 object-contain mb-4"
+            style={{ maxWidth: '80px', maxHeight: '80px' }}
             initial={{ opacity: 0, scale: 0.8 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.2 }}
           />
-          <h3 className="text-xl md:text-2xl font-bold text-white text-center">
+          <h3 className="text-xs md:text-2xl font-bold text-white text-center">
             {!match.ishomegame ? "FC Patron" : match.opponent?.name}
           </h3>
           {match.matchtypeid !== 1 && (
