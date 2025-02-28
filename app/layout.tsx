@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import ClientLayout from '../components/ClientLayout'
+import { AdminProvider } from '@/context/AdminContext'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -19,9 +20,11 @@ export default function RootLayout({
   return (
     <html lang="en" style={{ backgroundColor: 'black', color: 'white' }}>
       <body className={`${inter.className} h-[100dvh] overflow-hidden`} style={{ backgroundColor: 'black', color: 'white' }}>
-        <ClientLayout>
-          {children}
-        </ClientLayout>
+        <AdminProvider>
+          <ClientLayout>
+            {children}
+          </ClientLayout>
+        </AdminProvider>
       </body>
     </html>
   )

@@ -8,6 +8,7 @@ import LoginScreen from '@/components/auth/LoginScreen'
 import type { User } from '@supabase/supabase-js'
 import type { Practice, Player, Attendance } from '@/types/database'
 import LoadingScreen from '@/components/ui/LoadingScreen'
+import { useAdmin } from '@/context/AdminContext'
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null)
@@ -16,6 +17,7 @@ export default function Admin() {
   const [players, setPlayers] = useState<Player[]>([])
   const [attendance, setAttendance] = useState<Attendance[]>([])
   const [dataLoading, setDataLoading] = useState(true)
+  const { checkAdminStatus } = useAdmin()
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -24,18 +26,8 @@ export default function Admin() {
       setUser(currentUser ?? null)
       
       if (currentUser) {
-        const { data: adminData, error } = await supabase
-          .from('admins')
-          .select('id')
-          .eq('id', currentUser.id)
-          .single()
-
-        if (error) {
-          console.error('Error checking admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(!!adminData)
-        }
+        const isUserAdmin = await checkAdminStatus(currentUser.id)
+        setIsAdmin(isUserAdmin)
       } else {
         setIsAdmin(false)
       }
@@ -48,25 +40,15 @@ export default function Admin() {
       setUser(currentUser ?? null)
       
       if (currentUser) {
-        const { data: adminData, error } = await supabase
-          .from('admins')
-          .select('id')
-          .eq('id', currentUser.id)
-          .single()
-
-        if (error) {
-          console.error('Error checking admin status:', error)
-          setIsAdmin(false)
-        } else {
-          setIsAdmin(!!adminData)
-        }
+        const isUserAdmin = await checkAdminStatus(currentUser.id)
+        setIsAdmin(isUserAdmin)
       } else {
         setIsAdmin(false)
       }
     })
 
     return () => subscription.unsubscribe()
-  }, [])
+  }, [checkAdminStatus])
 
   const loadInitialData = async () => {
     try {
