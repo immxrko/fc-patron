@@ -7,28 +7,59 @@ import ManagementMenu from '@/components/admin/ManagementMenu'
 import LoginScreen from '@/components/auth/LoginScreen'
 import type { User } from '@supabase/supabase-js'
 import type { Practice, Player, Attendance } from '@/types/database'
+import LoadingScreen from '@/components/ui/LoadingScreen'
 
 export default function Admin() {
   const [user, setUser] = useState<User | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [isAdmin, setIsAdmin] = useState<boolean | null>(null)
   const [practices, setPractices] = useState<Practice[]>([])
   const [players, setPlayers] = useState<Player[]>([])
   const [attendance, setAttendance] = useState<Attendance[]>([])
   const [dataLoading, setDataLoading] = useState(true)
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
       const currentUser = session?.user
       setUser(currentUser ?? null)
       
       if (currentUser) {
-        const { data: adminData } = await supabase
+        const { data: adminData, error } = await supabase
           .from('admins')
           .select('id')
           .eq('id', currentUser.id)
           .single()
 
-        setIsAdmin(!!adminData)
+        if (error) {
+          console.error('Error checking admin status:', error)
+          setIsAdmin(false)
+        } else {
+          setIsAdmin(!!adminData)
+        }
+      } else {
+        setIsAdmin(false)
+      }
+    }
+
+    checkAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      const currentUser = session?.user
+      setUser(currentUser ?? null)
+      
+      if (currentUser) {
+        const { data: adminData, error } = await supabase
+          .from('admins')
+          .select('id')
+          .eq('id', currentUser.id)
+          .single()
+
+        if (error) {
+          console.error('Error checking admin status:', error)
+          setIsAdmin(false)
+        } else {
+          setIsAdmin(!!adminData)
+        }
       } else {
         setIsAdmin(false)
       }
@@ -53,6 +84,10 @@ export default function Admin() {
     } finally {
       setDataLoading(false)
     }
+  }
+
+  if (isAdmin === null) {
+    return <LoadingScreen />
   }
 
   if (!user) {

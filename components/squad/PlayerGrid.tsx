@@ -48,33 +48,61 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
         season: selectedSeason
       });
 
-      const { data: squadData, error } = await supabase
+      // Fetch regular player stats
+      const { data: squadData, error: squadError } = await supabase
         .from('squad_details_view')
         .select('*')
         .eq('km_res', selectedTeam === 'first-team' ? 'KM' : 'RES');
 
-      if (error) {
-        console.error('Error fetching squad data:', error);
+      // Fetch clean sheets for goalkeepers
+      const { data: keeperData, error: keeperError } = await supabase
+        .from('keeper_clean_sheets')
+        .select('playerid, season, clean_sheets')
+        .eq('team', selectedTeam === 'first-team' ? 'KM' : 'RES');
+
+      if (squadError) {
+        console.error('Error fetching squad data:', squadError);
         return;
       }
 
-      console.log('Raw squad data:', squadData);
+      if (keeperError) {
+        console.error('Error fetching keeper data:', keeperError.message);
+        // Don't return, continue with other data
+      }
+
+      // Add more detailed logging
+      console.log('Keeper data fetch:', {
+        team: selectedTeam === 'first-team' ? 'KM' : 'RES',
+        data: keeperData,
+        error: keeperError
+      });
 
       // Process the data
       const processedData = squadData?.reduce((acc: any[], player) => {
-        console.log('Processing player:', player);
-        
         const existingPlayer = acc.find(p => p.ID === player.playerid);
         
+        // Find keeper stats if this is a goalkeeper
+        const keeperStats = player.playerposition === 'GK' ? 
+          keeperData?.filter(k => k.playerid === player.playerid) : null;
+        
         if (existingPlayer) {
-          console.log('Updating existing player:', existingPlayer);
           if (selectedSeason === 'All Seasons') {
             existingPlayer.games += parseInt(player.games);
-            existingPlayer.goals += parseInt(player.goals);
+            if (player.playerposition === 'GK') {
+              existingPlayer.cleanSheets = (keeperStats || [])
+                .reduce((sum, stat) => sum + parseInt(stat.clean_sheets), 0);
+            } else {
+              existingPlayer.goals += parseInt(player.goals);
+            }
             existingPlayer.assists += parseInt(player.assists);
           } else if (player.seasonname === selectedSeason) {
             existingPlayer.games = parseInt(player.games);
-            existingPlayer.goals = parseInt(player.goals);
+            if (player.playerposition === 'GK') {
+              existingPlayer.cleanSheets = keeperStats
+                ?.find(k => k.season === selectedSeason)?.clean_sheets || 0;
+            } else {
+              existingPlayer.goals = parseInt(player.goals);
+            }
             existingPlayer.assists = parseInt(player.assists);
           }
         } else {
@@ -84,16 +112,20 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
             Position: player.playerposition,
             BildURL: player.playerbildurl,
             games: selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.games) : 0,
-            goals: selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.goals) : 0,
+            cleanSheets: player.playerposition === 'GK' ? 
+              (selectedSeason === 'All Seasons' 
+                ? (keeperStats || []).reduce((sum, stat) => sum + parseInt(stat.clean_sheets), 0)
+                : keeperStats?.find(k => k.season === selectedSeason)?.clean_sheets || 0
+              ) : undefined,
+            goals: player.playerposition === 'GK' ? undefined : 
+              (selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.goals) : 0),
             assists: selectedSeason === 'All Seasons' || player.seasonname === selectedSeason ? parseInt(player.assists) : 0
           };
-          console.log('Adding new player:', newPlayer);
           acc.push(newPlayer);
         }
         return acc;
       }, []);
 
-      console.log('Final processed data:', processedData);
       setPlayers(processedData || []);
       setLoading(false);
     }
@@ -104,8 +136,8 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
   // Update the filtering logic
   const activePlayers = players.filter(player => {
     const hasGames = player.games > 0;
-    const matchesSearchQuery = player.Name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                              player.Position.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearchQuery = player.Name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                              player.Position?.toLowerCase().includes(searchQuery.toLowerCase());
     return hasGames && matchesSearchQuery;
   });
 
@@ -214,8 +246,12 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">
-                            <span className="text-sm font-semibold text-white">{player.goals}</span>
-                            <span className="text-xs text-gray-400">Goals</span>
+                            <span className="text-sm font-semibold text-white">
+                              {player.Position === 'GK' ? player.cleanSheets : player.goals}
+                            </span>
+                            <span className="text-xs text-gray-400">
+                              {player.Position === 'GK' ? 'Clean Sheets' : 'Goals'}
+                            </span>
                           </div>
                           <div className="w-[1px] h-3 bg-white/10" />
                           <div className="flex items-center gap-1">

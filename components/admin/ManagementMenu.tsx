@@ -43,6 +43,7 @@ interface MenuItem {
   description: string
   icon: LucideIcon
   onClick: () => void
+  color: string
 }
 
 interface ManagementMenuProps {
@@ -60,20 +61,23 @@ export default function ManagementMenu({ practices, players, attendance, onDataU
     {
       title: "Manage Players",
       icon: Users,
-      description: "Control player status and add new players to the system",
-      onClick: () => setSelectedSection('player-props')
+      description: "Control player status and add new players",
+      onClick: () => setSelectedSection('player-props'),
+      color: "blue"
     },
     {
       title: "Manage Games",
       icon: Swords,
-      description: "Schedule matches, update results, and manage game statistics",
-      onClick: () => setSelectedSection('games')
+      description: "Schedule matches and update results",
+      onClick: () => setSelectedSection('games'),
+      color: "red"
     },
     {
       title: "Manage Practice",
       icon: Dumbbell,
-      description: "Schedule training sessions and track attendance",
-      onClick: () => setSelectedSection('practice')
+      description: "Schedule training and track attendance",
+      onClick: () => setSelectedSection('practice'),
+      color: "green"
     }
   ]
 
@@ -122,70 +126,64 @@ export default function ManagementMenu({ practices, players, attendance, onDataU
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black/40 to-black/20 backdrop-blur-sm p-6">
+    <div className="min-h-screen bg-gradient-to-b from-black/40 to-black/20 backdrop-blur-sm p-4 md:p-6">
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-8 md:mb-12">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-0">
-          <div className="flex items-center gap-4">
-            <div className="p-2 md:p-3 bg-red-500/10 rounded-xl">
-              <Settings className="w-5 h-5 md:w-6 md:h-6 text-red-400" />
+      <div className="max-w-7xl mx-auto mb-6 md:mb-8">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-red-500/10 rounded-xl">
+              <Settings className="w-5 h-5 text-red-400" />
             </div>
             <div>
-              <h2 className="text-xl md:text-2xl font-bold text-white">Management Console</h2>
-              <p className="text-sm md:text-base text-gray-400">Manage your team and track performance</p>
+              <h2 className="text-xl font-bold text-white">Management Console</h2>
+              <p className="text-sm text-gray-400">Manage your team and track performance</p>
             </div>
           </div>
           <motion.button
             onClick={handleSignOut}
-            className="w-full md:w-auto px-4 md:px-6 py-2 md:py-3 bg-red-500/10 hover:bg-red-500/20 
-              rounded-xl text-red-400 text-sm font-medium transition-colors
-              flex items-center justify-center gap-2"
+            className="w-full md:w-auto px-4 py-2 bg-red-500/10 hover:bg-red-500/20 
+              rounded-xl text-red-400 text-sm font-medium transition-colors"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            <span>Sign Out</span>
+            Sign Out
           </motion.button>
         </div>
       </div>
 
       {/* Menu Grid */}
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
-          {menuItems.map((item, index) => {
-            const Icon = item.icon
-            return (
-              <motion.div
-                key={item.title}
-                onClick={item.onClick}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                className="group relative aspect-[3/2] md:aspect-square overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-0 
-                  group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {menuItems.map((item, index) => (
+            <motion.div
+              key={item.title}
+              onClick={item.onClick}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="group cursor-pointer"
+            >
+              <div className="relative h-40 sm:h-48 bg-black/20 backdrop-blur-sm rounded-2xl p-6
+                border border-white/5 hover:border-red-500/20 transition-colors
+                flex flex-col justify-between overflow-hidden">
+                <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br 
+                  from-${item.color}-500/10 to-transparent rounded-full 
+                  transform translate-x-16 -translate-y-16`} />
                 
-                <div className="relative h-full p-4 md:p-6 bg-black/30 backdrop-blur-sm rounded-2xl border border-white/5 
-                  hover:border-red-500/20 transition-all duration-300 cursor-pointer
-                  flex flex-col items-center justify-center text-center">
-                  <div className="p-3 md:p-4 rounded-xl bg-black/20 group-hover:bg-red-500/10 transition-colors mb-3 md:mb-4">
-                    <Icon className="w-8 h-8 md:w-10 md:h-10 text-red-400" />
+                <div className="relative">
+                  <div className="p-3 rounded-xl bg-black/20 w-fit mb-4">
+                    <item.icon className={`w-6 h-6 text-${item.color}-400`} />
                   </div>
-                  <h3 className="text-lg md:text-xl font-semibold text-white group-hover:text-red-400 transition-colors mb-1 md:mb-2">
-                    {item.title}
-                  </h3>
-                  <p className="text-sm text-gray-400 leading-relaxed line-clamp-2 md:line-clamp-none">
-                    {item.description}
-                  </p>
-                  
-                  {/* Hover Indicator */}
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent 
-                    via-red-500/50 to-transparent transform scale-x-0 group-hover:scale-x-100 
-                    transition-transform duration-300" />
+                  <h2 className="text-xl font-bold text-white mb-2">{item.title}</h2>
+                  <p className="text-sm text-gray-400">{item.description}</p>
                 </div>
-              </motion.div>
-            )
-          })}
+
+                <div className="relative h-1 w-full bg-gradient-to-r from-transparent 
+                  via-red-500/50 to-transparent transform scale-x-0 group-hover:scale-x-100 
+                  transition-transform duration-300" />
+              </div>
+            </motion.div>
+          ))}
         </div>
       </div>
     </div>
