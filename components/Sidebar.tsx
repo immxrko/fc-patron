@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, Users, Trophy, CalendarDays, LogIn } from 'lucide-react'
+import { Home, Users, Trophy, CalendarDays, LogIn, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -90,6 +90,19 @@ export default function Sidebar() {
             }`}
         >
           <Trophy className="w-6 h-6" />
+        </Link>
+
+        <div className="w-8 h-px bg-white/10 my-2" />
+
+        <Link 
+          href="/imprint"
+          className={`p-3 rounded-xl transition-colors duration-200 
+            ${isActive('/imprint') 
+              ? 'bg-red-500/20 text-red-400' 
+              : 'text-gray-400 hover:text-white hover:bg-white/5'
+            }`}
+        >
+          <FileText className="w-6 h-6" />
         </Link>
       </nav>
 

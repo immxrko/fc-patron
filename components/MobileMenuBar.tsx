@@ -1,6 +1,6 @@
 'use client'
 
-import { Home, Users, Trophy, CalendarDays, LogIn } from 'lucide-react'
+import { Home, Users, Trophy, CalendarDays, LogIn, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
@@ -83,6 +83,21 @@ export default function MobileMenuBar() {
               }`}
           >
             <Trophy className="w-6 h-6" />
+          </Link>
+
+          {/* Separator */}
+          <div className="h-8 w-px bg-white/10 mx-1" />
+
+          {/* Imprint Link */}
+          <Link 
+            href="/imprint"
+            className={`p-3 rounded-xl transition-colors duration-200 min-w-[48px] flex items-center justify-center
+              ${isActive('/imprint') 
+                ? 'bg-red-500/20 text-red-400' 
+                : 'text-gray-400 hover:text-white hover:bg-white/5'
+              }`}
+          >
+            <FileText className="w-6 h-6" />
           </Link>
        
           {isAdmin && (

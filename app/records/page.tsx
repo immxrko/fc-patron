@@ -43,7 +43,7 @@ export default function Records() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="min-h-screen p-4 overflow-x-hidden relative"
+      className="min-h-screen p-4 pb-24 md:pb-4 overflow-x-hidden relative"
     >
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">
@@ -80,7 +80,7 @@ export default function Records() {
         </AnimatePresence>
       </div>
 
-      <div className="relative w-full max-w-7xl mx-auto space-y-6">
+      <div className="relative w-full max-w-6xl mx-auto space-y-6">
         <motion.div 
           className="grid grid-cols-1 lg:grid-cols-2 gap-6"
           variants={itemVariants}

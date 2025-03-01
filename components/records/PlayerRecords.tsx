@@ -243,10 +243,10 @@ export default function PlayerRecords() {
               <div className="flex items-center gap-3 mt-1">
                 <span className="text-xs text-red-400">{scorer.goals} Goals</span>
                 <span className="w-1 h-1 bg-gray-600 rounded-full" />
-                  <span className="text-xs text-gray-400">{scorer.matches} Games</span> 
+                <span className="text-xs text-gray-400">{scorer.matches} Games</span> 
               </div>
             </div>
-              <div className="text-lg font-bold text-white">
+            <div className="hidden md:block text-lg font-bold text-white">
               {(scorer.goals /scorer.matches).toFixed(2)}
               <span className="text-xs text-gray-400 ml-1">Goals per Game</span>
             </div> 

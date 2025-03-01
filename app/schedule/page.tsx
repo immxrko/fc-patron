@@ -176,7 +176,7 @@ export default function Schedule() {
       initial="hidden"
       animate="visible"
       variants={containerVariants}
-      className="min-h-screen p-4 overflow-x-hidden relative"
+      className="md:fixed md:inset-0 md:overflow-hidden min-h-screen p-4 overflow-x-hidden relative"
     >
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">

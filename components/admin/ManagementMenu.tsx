@@ -40,7 +40,6 @@ interface Attendance {
 
 interface MenuItem {
   title: string
-  description: string
   icon: LucideIcon
   onClick: () => void
   color: string
@@ -61,21 +60,18 @@ export default function ManagementMenu({ practices, players, attendance, onDataU
     {
       title: "Manage Players",
       icon: Users,
-      description: "Control player status and add new players",
       onClick: () => setSelectedSection('player-props'),
       color: "blue"
     },
     {
       title: "Manage Games",
       icon: Swords,
-      description: "Schedule matches and update results",
       onClick: () => setSelectedSection('games'),
       color: "red"
     },
     {
       title: "Manage Practice",
       icon: Dumbbell,
-      description: "Schedule training and track attendance",
       onClick: () => setSelectedSection('practice'),
       color: "green"
     }
@@ -165,20 +161,19 @@ export default function ManagementMenu({ practices, players, attendance, onDataU
             >
               <div className="relative h-40 sm:h-48 bg-black/20 backdrop-blur-sm rounded-2xl p-6
                 border border-white/5 hover:border-red-500/20 transition-colors
-                flex flex-col justify-between overflow-hidden">
+                flex flex-col items-center justify-center overflow-hidden">
                 <div className={`absolute top-0 right-0 w-32 h-32 bg-gradient-to-br 
                   from-${item.color}-500/10 to-transparent rounded-full 
                   transform translate-x-16 -translate-y-16`} />
                 
-                <div className="relative">
+                <div className="relative flex flex-col items-center">
                   <div className="p-3 rounded-xl bg-black/20 w-fit mb-4">
                     <item.icon className={`w-6 h-6 text-${item.color}-400`} />
                   </div>
-                  <h2 className="text-xl font-bold text-white mb-2">{item.title}</h2>
-                  <p className="text-sm text-gray-400">{item.description}</p>
+                  <h2 className="text-xl font-bold text-white text-center">{item.title}</h2>
                 </div>
 
-                <div className="relative h-1 w-full bg-gradient-to-r from-transparent 
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent 
                   via-red-500/50 to-transparent transform scale-x-0 group-hover:scale-x-100 
                   transition-transform duration-300" />
               </div>

@@ -238,12 +238,12 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
           className="space-y-6 h-full flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-0">
             <div className="flex items-center gap-3">
               <motion.button
                 onClick={onBack}
-                className="px-4 py-2 bg-black/20 hover:bg-black/40 
-                  rounded-xl text-gray-400 text-sm font-medium transition-colors 
+                className="px-3 md:px-4 py-2 bg-black/20 hover:bg-black/40 
+                  rounded-xl text-gray-400 text-xs md:text-sm font-medium transition-colors 
                   flex items-center gap-2"
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -251,18 +251,18 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                 <ChevronLeft className="w-4 h-4" />
                 Back
               </motion.button>
-              <div className="flex items-center gap-3">
-                <Trophy className="w-5 h-5 text-red-400" />
-                <h2 className="text-xl font-bold text-white">Manage Games</h2>
+              <div className="flex items-center gap-2 md:gap-3">
+                <Trophy className="w-4 h-4 md:w-5 md:h-5 text-red-400" />
+                <h2 className="text-lg md:text-xl font-bold text-white">Manage Games</h2>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 md:gap-3">
               {/* Only show the button for the newest season */}
               {isNewestSeason() && (
                 <motion.button
                   onClick={() => setShowNotPlayed(!showNotPlayed)}
-                  className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors 
+                  className={`px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-medium transition-colors 
                     flex items-center gap-2 ${
                       showNotPlayed 
                         ? 'bg-red-500/10 text-red-400 hover:bg-red-500/20' 
@@ -275,19 +275,19 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                 </motion.button>
               )}
 
-              {/* Season Filter - without All Seasons option */}
+              {/* Season Filter */}
               <div className="relative">
                 <motion.button
                   onClick={() => setIsSeasonDropdownOpen(!isSeasonDropdownOpen)}
-                  className="px-4 py-2 bg-black/20 hover:bg-black/40 
-                    rounded-xl text-gray-400 text-sm font-medium transition-colors 
+                  className="px-3 md:px-4 py-2 bg-black/20 hover:bg-black/40 
+                    rounded-xl text-gray-400 text-xs md:text-sm font-medium transition-colors 
                     flex items-center gap-2"
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   {selectedSeason}
                   <ChevronDown 
-                    className={`w-4 h-4 transition-transform duration-200 
+                    className={`w-3 h-3 md:w-4 md:h-4 transition-transform duration-200 
                       ${isSeasonDropdownOpen ? 'rotate-180' : ''}`} 
                   />
                 </motion.button>
@@ -325,14 +325,18 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
 
           {/* Scrollable Matches Grid */}
           <div className="flex-1 overflow-y-auto pr-2">
-            <div className="space-y-6 pb-6">
+            <div className="space-y-4 md:space-y-6 pb-6">
               {groupMatchesByDate(sortedMatches).map(([date, matches]) => (
-                <div key={date} className="flex gap-6">
-                  <div className="w-32 py-4 flex-shrink-0">
-                    <h3 className="text-white font-medium sticky top-4">{date}</h3>
+                <div key={date} className="md:flex gap-3 md:gap-6">
+                  {/* Date header - full width on mobile, side column on desktop */}
+                  <div className="w-full md:w-32 py-2 md:py-4 flex-shrink-0">
+                    <h3 className="text-sm md:text-base text-white font-medium sticky top-4 
+                      mb-3 md:mb-0 bg-black/20 md:bg-transparent p-2 md:p-0 rounded-lg md:rounded-none">
+                      {date}
+                    </h3>
                   </div>
                   <div className="flex-1">
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                       {matches.map((match) => (
                         <motion.div
                           key={match.matchid}
@@ -340,13 +344,13 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                           onClick={() => setSelectedMatch(match)}
                           whileHover={{ scale: 1.02 }}
                         >
-                          <div className="bg-black/20 backdrop-blur-sm rounded-xl p-4 border border-white/5">
-                            <div className="flex items-center justify-between mb-3">
-                              <div className="flex items-center gap-3">
+                          <div className="bg-black/20 backdrop-blur-sm rounded-xl p-3 md:p-4 border border-white/5">
+                            <div className="flex items-center justify-between mb-2 md:mb-3">
+                              <div className="flex items-center gap-2 md:gap-3">
                                 <img 
                                   src={match.logourl || 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRp9NXVuzcO7ncREpZSmAozghK0DghB8_G2Fw&s'} 
                                   alt={match.opponent_name}
-                                  className="w-8 h-8 rounded-lg object-cover bg-black/20"
+                                  className="w-6 h-6 md:w-8 md:h-8 rounded-lg object-cover bg-black/20"
                                   onError={(e) => {
                                     const target = e.target as HTMLImageElement;
                                     target.src = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRp9NXVuzcO7ncREpZSmAozghK0DghB8_G2Fw&s';
@@ -354,15 +358,15 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                                 />
                                 <div className="flex flex-col">
                                   <div className="flex items-center gap-2">
-                                    <span className="text-white font-medium">{match.opponent_name}</span>
+                                    <span className="text-sm md:text-base text-white font-medium">{match.opponent_name}</span>
                                     {match.km_res === 'RES' && (
                                       <span className="px-1.5 py-0.5 bg-yellow-500/10 text-yellow-500 
-                                        text-xs font-medium rounded-md">
+                                        text-[10px] md:text-xs font-medium rounded-md">
                                         U23
                                       </span>
                                     )}
                                   </div>
-                                  <div className="flex items-center gap-2 text-xs text-gray-400">
+                                  <div className="flex items-center gap-2 text-[10px] md:text-xs text-gray-400">
                                     <span>{match.matchtype}</span>
                                     {match.matchday && (
                                       <span>• Round {match.matchday}</span>
@@ -370,13 +374,13 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                                   </div>
                                 </div>
                               </div>
-                              <span className="text-sm text-gray-400">{match.season_name}</span>
+                              <span className="text-xs md:text-sm text-gray-400">{match.season_name}</span>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-sm text-gray-400">
+                              <span className="text-xs md:text-sm text-gray-400">
                                 {match.ishomegame ? 'Home' : 'Away'}
                               </span>
-                              <span className={`text-sm font-medium ${
+                              <span className={`text-xs md:text-sm font-medium ${
                                 match.result === 'W' ? 'text-green-400' :
                                 match.result === 'L' ? 'text-red-400' :
                                 match.result === 'D' ? 'text-gray-400' :
