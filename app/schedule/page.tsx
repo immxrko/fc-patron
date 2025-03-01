@@ -35,95 +35,108 @@ interface Match {
 export default function Schedule() {
   const [selectedOpponent, setSelectedOpponent] = useState<string | null>(null)
   const [isClient, setIsClient] = useState(false)
-  const [nextMatch, setNextMatch] = useState<Match | null>(null)
+  const [nextMatches, setNextMatches] = useState<Match[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     setIsClient(true)
-    fetchNextMatch()
+    fetchNextMatches()
   }, [])
 
-  const fetchNextMatch = async () => {
+  const fetchNextMatches = async () => {
     try {
       const today = new Date().toISOString().split('T')[0]
       
-      const { data: matchData, error: matchError } = await supabase
+      // Fetch next 2 KM matches
+      const { data: kmMatchesData, error: kmMatchError } = await supabase
         .from('matches')
         .select('*')
         .gte('date', today)
         .eq('km_res', 'KM')
         .order('date', { ascending: true })
-        .limit(1)
-        .single()
+        .limit(2)
 
-      if (matchError) throw matchError
+      if (kmMatchError) throw kmMatchError
 
-      // Get RES match for the same date if exists
-      const { data: resMatchData, error: resMatchError } = await supabase
-        .from('matches')
-        .select('time')
-        .eq('date', matchData.date)
-        .eq('km_res', 'RES')
-        .single()
-
-      if (resMatchError && resMatchError.code !== 'PGRST116') { // Ignore "no rows returned" error
-        console.error('Error fetching RES match:', resMatchError)
-      }
-
-      // Get opponent
-      const { data: opponentData, error: opponentError } = await supabase
-        .from('opponents')
-        .select('name, logourl')  // Just select the fields we need directly
-        .eq('id', matchData.opponentid)
-        .single()
-
-      if (opponentError) throw opponentError
-
-      // Get venue
-      const { data: venueData, error: venueError } = await supabase
-        .from('venues')
-        .select('*')
-        .eq('id', matchData.venueid)
-        .single()
-
-      if (venueError) throw venueError
-
-      // Get matchtype if not league game
-      let leagueData = null
-      if (matchData.matchtypeid !== 1) {
-        const { data: typeData, error: typeError } = await supabase
-          .from('leagues')
-          .select('name')
-          .eq('id', matchData.leagueid)
+      // Process each KM match
+      const processedMatches = await Promise.all(kmMatchesData.map(async (kmMatch) => {
+        // Get RES match for the same date if exists
+        const { data: resMatchData } = await supabase
+          .from('matches')
+          .select('time')
+          .eq('date', kmMatch.date)
+          .eq('km_res', 'RES')
           .single()
 
-        if (typeError) {
-          console.error('Error fetching league data:', typeError)
-        } else {
-          leagueData = typeData
-        
-        }
-      }
+        // Get opponent details
+        const { data: opponentData, error: opponentError } = await supabase
+          .from('opponents')
+          .select('name, logourl')
+          .eq('id', kmMatch.opponentid)
+          .single()
 
-      setNextMatch({
-        ...matchData,
-        resTime: resMatchData?.time || null,
-        opponent: {
-          name: opponentData.name,
-          logourl: opponentData.logourl,
-          league: leagueData?.name
-        },
-        venue: {
-          name: venueData.name,
-          adress: venueData.adress
+        if (opponentError) throw opponentError
+
+        // Get venue details
+        const { data: venueData, error: venueError } = await supabase
+          .from('venues')
+          .select('*')
+          .eq('id', kmMatch.venueid)
+          .single()
+
+        if (venueError) throw venueError
+
+        // Get matchtype if not league game
+        let leagueData = null
+        if (kmMatch.matchtypeid !== 1) {
+          const { data: typeData } = await supabase
+            .from('leagues')
+            .select('name')
+            .eq('id', kmMatch.leagueid)
+            .single()
+
+          leagueData = typeData
         }
-      })
+
+        return {
+          ...kmMatch,
+          resTime: resMatchData?.time || null,
+          opponent: {
+            name: opponentData.name,
+            logourl: opponentData.logourl,
+            league: leagueData?.name
+          },
+          venue: {
+            name: venueData.name,
+            adress: venueData.adress
+          }
+        }
+      }))
+
+      setNextMatches(processedMatches)
     } catch (error) {
-      console.error('Error fetching next match:', error)
+      console.error('Error fetching next matches:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  const getCurrentMatch = () => {
+    if (!nextMatches.length) return null
+
+    const now = new Date()
+    const match1Date = new Date(`${nextMatches[0].date}T${nextMatches[0].time}`)
+
+    // If first match is in the past and we have a second match, show the second match
+    if (match1Date < now && nextMatches.length > 1) {
+      return nextMatches[1]
+    }
+
+    // Otherwise show the first match
+    return nextMatches[0]
+  }
+
+  const currentMatch = getCurrentMatch()
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -204,19 +217,26 @@ export default function Schedule() {
         >
           <div className="lg:col-span-2">
             <motion.div variants={itemVariants}>
-              {nextMatch && <NextMatch match={nextMatch} onMatchComplete={fetchNextMatch} />}
+              {currentMatch && (
+                <NextMatch 
+                  match={currentMatch} 
+                  onMatchComplete={fetchNextMatches}
+                />
+              )}
             </motion.div>
           </div>
           
           <div>
             <motion.div variants={itemVariants}>
-              <HeadToHead 
-                opponent={nextMatch ? {
-                  id: nextMatch.opponentid,
-                  name: nextMatch.opponent?.name || '',
-                  logourl: nextMatch.opponent?.logourl || ''
-                } : undefined} 
-              />
+              {currentMatch && (
+                <HeadToHead 
+                  opponent={{
+                    id: currentMatch.opponentid,
+                    name: currentMatch.opponent?.name || '',
+                    logourl: currentMatch.opponent?.logourl || ''
+                  }}
+                />
+              )}
             </motion.div>
           </div>
         </motion.div>

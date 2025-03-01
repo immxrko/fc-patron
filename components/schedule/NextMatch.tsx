@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Calendar,  MapPin, Users } from 'lucide-react'
+import { Calendar, MapPin, Users } from 'lucide-react'
 
 interface MatchProps {
   match: {
@@ -26,27 +26,6 @@ interface MatchProps {
   onMatchComplete: (date?: string) => void
 }
 
-interface WeatherData {
-  current_condition: [{
-    temp_C: string;
-    windspeedKmph: string;
-    precipMM: string;
-    humidity: string;
-    weatherDesc: [{ value: string }];
-  }];
-  weather: {
-    date: string;
-    hourly: {
-      tempC: string;
-      weatherDesc: [{ value: string }];
-      humidity: string;
-      windspeedKmph: string;
-      precipMM: string;
-      time: string;
-    }[];
-  }[];
-}
-
 export default function NextMatch({ match, onMatchComplete }: MatchProps) {
   const [timeLeft, setTimeLeft] = useState({
     days: 0,
@@ -54,8 +33,6 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
     minutes: 0,
     seconds: 0
   })
-
-  const [weather, setWeather] = useState<WeatherData['current_condition'][0] | null>(null);
 
   useEffect(() => {
     const matchDate = new Date(match.date + 'T' + match.time)
@@ -66,11 +43,10 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
       
       if (difference <= 0) {
         clearInterval(timer)
-        // Set tomorrow as the new date to find next match
         const tomorrow = new Date()
         tomorrow.setDate(tomorrow.getDate() + 1)
-        tomorrow.setHours(0, 0, 0, 0) // Reset to start of day
-        onMatchComplete(tomorrow.toISOString().split('T')[0]) // Pass the new date
+        tomorrow.setHours(0, 0, 0, 0)
+        onMatchComplete(tomorrow.toISOString().split('T')[0])
         return
       }
       
@@ -85,34 +61,6 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
     return () => clearInterval(timer)
   }, [match.date, match.time, onMatchComplete])
 
-  useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const response = await fetch('https://wttr.in/Vienna?format=j1');
-        const data: WeatherData = await response.json();
-        const matchDayWeather = findWeatherForDate(data, match.date);
-        if (matchDayWeather) {
-          setWeather({
-            temp_C: matchDayWeather.tempC,
-            windspeedKmph: matchDayWeather.windspeedKmph,
-            precipMM: matchDayWeather.precipMM,
-            humidity: matchDayWeather.humidity,
-            weatherDesc: matchDayWeather.weatherDesc
-          });
-        } else {
-          setWeather(null);
-        }
-      } catch (error) {
-        console.error('Error fetching weather:', error);
-      }
-    };
-
-    fetchWeather();
-    // Refresh weather every 30 minutes
-    const interval = setInterval(fetchWeather, 30 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [match.date]);
-
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr)
     return date.toLocaleDateString('de-DE', { 
@@ -124,69 +72,7 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
   }
 
   const formatTime = (timeStr: string) => {
-    return timeStr.substring(0, 5) // Assuming time is in format "HH:mm:ss", this gets "HH:mm"
-  }
-
-
-  const getWeatherIcon = (temp: string) => {
-    const temperature = parseInt(temp)
-    
-    if (temperature >= 25) {
-      // Hot sun
-      return (
-        <path 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round"
-          d="M12 3v2M12 19v2M5.5 5.5l1.5 1.5M17 17l1.5 1.5M3 12h2M19 12h2M17 7l1.5-1.5M5.5 18.5l1.5-1.5M12 16a4 4 0 100-8 4 4 0 000 8z" 
-          fill="currentColor"
-        />
-      )
-    }
-    
-    if (temperature >= 15) {
-      // Mild sun
-      return (
-        <path 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round"
-          d="M12 3V5M5.5 5.5L7 7M18.5 5.5L17 7M6 12H4M20 12H18M12 7C9.23858 7 7 9.23858 7 12C7 14.7614 9.23858 17 12 17C14.7614 17 17 14.7614 17 12C17 9.23858 14.7614 7 12 7Z" 
-          fill="currentColor"
-        />
-      )
-    }
-    
-    if (temperature >= 5) {
-      // Cool cloud
-      return (
-        <path 
-          stroke="currentColor" 
-          strokeWidth="2" 
-          strokeLinecap="round"
-          d="M3 15C3 17.2091 4.79086 19 7 19H16C18.7614 19 21 16.7614 21 14C21 11.2386 18.7614 9 16 9C15.9666 9 15.9334 9.00033 15.9002 9.00098C15.4373 6.71825 13.4193 5 11 5C8.23858 5 6 7.23858 6 10C6 10.3768 6.04169 10.7439 6.12071 11.097C4.33457 11.4976 3 13.0929 3 15Z"
-        />
-      )
-    }
-    
-    // Cold/freezing (snowflake)
-    return (
-      <path 
-        stroke="currentColor" 
-        strokeWidth="2" 
-        strokeLinecap="round"
-        d="M12 2v20M17.5 6.5L6.5 17.5M17.5 17.5L6.5 6.5M4 12h16M9.5 4L12 2l2.5 2M9.5 20L12 22l2.5-2"
-      />
-    )
-  }
-
-  const findWeatherForDate = (weatherData: WeatherData, matchDate: string) => {
-    const matchDayWeather = weatherData.weather.find(day => day.date === matchDate);
-    if (!matchDayWeather) return null;
-
-    // Get weather for 15:00 (time: "1500")
-    const matchTimeWeather = matchDayWeather.hourly.find(hour => hour.time === "1500");
-    return matchTimeWeather || null;
+    return timeStr.substring(0, 5)
   }
 
   return (
@@ -325,55 +211,6 @@ export default function NextMatch({ match, onMatchComplete }: MatchProps) {
           </motion.div>
         ))}
       </div>
-
-      {/* Weather Widget */}
-      <motion.div 
-        className="mb-6 p-4 md:p-6 bg-black/40 backdrop-blur-sm rounded-2xl border border-white/5"
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.6 }}
-      >
-        {weather ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 md:gap-4">
-              {/* Weather Icon */}
-              <div className="p-2 md:p-4 bg-gradient-to-br from-blue-400/20 to-blue-600/20 rounded-lg md:rounded-xl">
-                <svg className="w-6 h-6 md:w-8 md:h-8 text-blue-400" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  {getWeatherIcon(weather.temp_C)}
-                </svg>
-              </div>
-              
-              {/* Temperature and Conditions */}
-              <div>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-2xl md:text-3xl font-bold text-white">{weather.temp_C}°</span>
-                </div>
-                <span className="text-xs md:text-sm text-gray-400">{weather.weatherDesc[0].value}</span>
-              </div>
-            </div>
-
-            {/* Additional Weather Info */}
-            <div className="flex gap-3 md:gap-6">
-              <div className="text-center">
-                <div className="text-xs md:text-sm text-gray-400 mb-1">Wind</div>
-                <div className="text-sm md:text-lg font-medium text-white">{weather.windspeedKmph} km/h</div>
-              </div>
-              <div className="text-center hidden md:block">
-                <div className="text-sm text-gray-400 mb-1">Humidity</div>
-                <div className="text-lg font-medium text-white">{weather.humidity}%</div>
-              </div>
-              <div className="text-center">
-                <div className="text-xs md:text-sm text-gray-400 mb-1">Rain</div>
-                <div className="text-sm md:text-lg font-medium text-white">{weather.precipMM}mm</div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="text-center text-gray-400 text-sm">
-            Weather forecast will be available 3 days before the match
-          </div>
-        )}
-      </motion.div>
 
       {/* Venue Info */}
       <motion.div 

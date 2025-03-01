@@ -293,30 +293,41 @@ export default function HeadToHead({ opponent }: HeadToHeadProps) {
                   <span className="text-sm font-medium text-gray-400">Last 5 Meetings</span>
                 </div>
                 <div className="grid grid-cols-5 gap-2">
-                  {stats.lastGames.map((game, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: i * 0.1 }}
-                      className="relative group"
-                    >
-                      <div className={`
-                        w-full aspect-square rounded-lg flex items-center justify-center text-sm font-bold
-                        ${game.result === 'W' ? 'bg-green-500/20 text-green-400' : 
-                          game.result === 'L' ? 'bg-red-500/20 text-red-400' : 
-                          'bg-gray-500/20 text-gray-400'}
-                      `}>
-                        {game.result}
-                      </div>
-                      <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-lg">
-                        <div className="text-center">
-                          <div className="text-white font-bold">{game.score}</div>
-                          <div className="text-xs text-gray-400">{game.date}</div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))}
+                  {Array(5).fill(null).map((_, i) => {
+                    const game = stats.lastGames[i]
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        className="relative group"
+                      >
+                        {game ? (
+                          <>
+                            <div className={`
+                              w-full aspect-square rounded-lg flex items-center justify-center text-sm font-bold
+                              ${game.result === 'W' ? 'bg-green-500/20 text-green-400' : 
+                                game.result === 'L' ? 'bg-red-500/20 text-red-400' : 
+                                'bg-gray-500/20 text-gray-400'}
+                            `}>
+                              {game.result}
+                            </div>
+                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 rounded-lg">
+                              <div className="text-center">
+                                <div className="text-white font-bold">{game.score}</div>
+                                <div className="text-xs text-gray-400">{game.date}</div>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="w-full aspect-square rounded-lg flex items-center justify-center text-sm font-bold bg-black/40 text-gray-600">
+                            -
+                          </div>
+                        )}
+                      </motion.div>
+                    )
+                  })}
                 </div>
               </div>
 

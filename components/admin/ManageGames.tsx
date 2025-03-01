@@ -129,7 +129,7 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
     }
   }
 
-  // Function to clear cache when needed (e.g., after updates)
+  // Function to clear cache when needed
   const clearMatchesCache = () => {
     matchesCache.current = {}
   }
@@ -198,6 +198,13 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
     }
   };
 
+  // Add this helper function inside the ManageGames component
+  const isPastGame = (date: string) => {
+    const gameDate = new Date(date)
+    gameDate.setHours(0o0, 0o0, 0o0) // End of the game day
+    return gameDate < new Date()
+  }
+
   return (
     <AnimatePresence mode="wait">
       {selectedMatch ? (
@@ -213,10 +220,12 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
             match={selectedMatch}
             onBack={() => {
               setSelectedMatch(null)
+              clearMatchesCache() // Clear cache when returning
               setNeedsRefetch(true) // Trigger refetch when returning
             }}
             players={players}
             onUpdate={() => {
+              clearMatchesCache() // Clear cache on updates
               setNeedsRefetch(true) // Also trigger refetch on updates
             }}
           />
@@ -381,6 +390,12 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                             <div className="absolute -bottom-2 left-0 right-0 mx-auto w-fit px-3 py-1 
                               bg-red-500/10 text-red-400 text-xs font-medium rounded-full border border-red-500/20">
                               Lineup Missing
+                            </div>
+                          )}
+                          {match.result === null && isPastGame(match.date) && (
+                            <div className="absolute -bottom-2 left-0 right-0 mx-auto w-fit px-3 py-1 
+                              bg-yellow-500/10 text-yellow-400 text-xs font-medium rounded-full border border-yellow-500/20">
+                              Missing Result
                             </div>
                           )}
                           {getResultIndicator(match)}
