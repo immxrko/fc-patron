@@ -23,7 +23,8 @@ export default function Home() {
   }, [showTrialForm])
 
   return (
-    <main className="fixed inset-0 flex items-center justify-center p-4 overflow-hidden">
+    <main className={`min-h-[100dvh] flex items-center justify-center p-4 pb-24 md:pb-4 overflow-x-hidden
+      ${showTrialForm ? 'h-[100dvh] overflow-hidden' : ''}`}>
       <div className="relative w-full max-w-6xl mx-auto">
         {/* Background Effects */}
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-red-500/10 rounded-full blur-3xl" />
@@ -51,7 +52,7 @@ export default function Home() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: "-100%" }}
               transition={{ duration: 0.5, ease: "easeInOut" }}
-              className="h-full overflow-y-auto scrollbar-thin 
+              className="h-[calc(100dvh-7rem)] md:h-[calc(100vh-2rem)] overflow-y-auto pt-0 md:pt-20 scrollbar-thin 
                 scrollbar-track-transparent scrollbar-thumb-red-500/20 hover:scrollbar-thumb-red-500/30"
             >
               <TrialForm onBack={() => setShowTrialForm(false)} />
