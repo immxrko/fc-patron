@@ -249,7 +249,7 @@ useEffect(() => {
 
   // Get all selected players (starters + subs) for dropdowns
   const availablePlayers = [...selectedStarters, ...selectedSubs]
-    .map(id => players.find(p => p.ID === id))
+    .map(id => players.find(p => p.ID === parseInt(String(id))))
     .filter((p): p is Player => p !== undefined)
 
   const handleCardChange = (index: number, field: 'playerId' | 'type', value: string) => {
@@ -962,72 +962,62 @@ useEffect(() => {
           <div className="bg-black/30 backdrop-blur-sm rounded-xl border border-white/5 p-6">
             <h3 className="text-lg font-medium text-white mb-6">Substitutions</h3>
             <div className="space-y-4">
-              {subs.map((sub, index) => {
-                // Get all players used in previous rows (different minutes)
-                const previouslyUsedPlayers = subs
-                  .slice(0, index)
-                  .filter(s => s.minute !== sub.minute) // Only exclude players from different minutes
-                  .flatMap(s => [s.playerOutId, s.playerInId]);
-                
-                // Filter available starters excluding previously used players
-                const availableStarters = selectedStarters
-                  .filter(id => !previouslyUsedPlayers.includes(id.toString()))
-                  .map(id => players.find(p => p.ID === id))
-                  .filter((p): p is Player => p !== undefined);
-                
-                // Filter available subs excluding previously used players
-                const availableSubs = selectedSubs
-                  .filter(id => !previouslyUsedPlayers.includes(id.toString()))
-                  .map(id => players.find(p => p.ID === id))
-                  .filter((p): p is Player => p !== undefined);
-
-                return (
-                  <div key={index} className="flex items-center gap-4">
-                    <span className="text-gray-400 text-sm font-medium w-16">
-                      Sub {index + 1}
-                    </span>
-                    <select
-                      value={sub.playerOutId}
-                      onChange={(e) => handleSubChange(index, 'playerOutId', e.target.value)}
-                      className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                        rounded-xl text-sm text-white focus:outline-none 
-                        focus:border-red-500/50"
-                    >
-                      <option value="" disabled>Player Out</option>
-                      {availableStarters.map(player => (
+              {subs.map((sub, index) => (
+                <div key={index} className="flex items-center gap-4">
+                  <span className="text-gray-400 text-sm font-medium w-16">
+                    Sub {index + 1}
+                  </span>
+                  <select
+                    value={sub.playerOutId}
+                    onChange={(e) => handleSubChange(index, 'playerOutId', e.target.value)}
+                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  >
+                    <option value="" disabled>Player Out</option>
+                    {[
+                      ...selectedStarters,
+                      ...subs
+                        .slice(0, index)
+                        .map(prevSub => prevSub.playerInId)
+                        .filter(Boolean)
+                    ].map(playerId => {
+                      const player = players.find(p => p.ID === parseInt(String(playerId)))
+                      if (!player) return null
+                      return (
                         <option key={player.ID} value={player.ID}>
                           {player.Name}
                         </option>
-                      ))}
-                    </select>
-                    <select
-                      value={sub.playerInId}
-                      onChange={(e) => handleSubChange(index, 'playerInId', e.target.value)}
-                      className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
-                        rounded-xl text-sm text-white focus:outline-none 
-                        focus:border-red-500/50"
-                    >
-                      <option value="" disabled>Player In</option>
-                      {availableSubs.map(player => (
-                        <option key={player.ID} value={player.ID}>
-                          {player.Name}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="number"
-                      placeholder="Min"
-                      min="1"
-                      max="120"
-                      value={sub.minute}
-                      onChange={(e) => handleSubChange(index, 'minute', e.target.value)}
-                      className="w-20 px-4 py-2 bg-black/20 border border-white/5 
-                        rounded-xl text-sm text-white focus:outline-none 
-                        focus:border-red-500/50"
-                    />
-                  </div>
-                );
-              })}
+                      )
+                    })}
+                  </select>
+                  <select
+                    value={sub.playerInId}
+                    onChange={(e) => handleSubChange(index, 'playerInId', e.target.value)}
+                    className="flex-1 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  >
+                    <option value="" disabled>Player In</option>
+                    {availablePlayers.map(player => (
+                      <option key={player.ID} value={player.ID}>
+                        {player.Name}
+                      </option>
+                    ))}
+                  </select>
+                  <input
+                    type="number"
+                    placeholder="Min"
+                    min="1"
+                    max="120"
+                    value={sub.minute}
+                    onChange={(e) => handleSubChange(index, 'minute', e.target.value)}
+                    className="w-20 px-4 py-2 bg-black/20 border border-white/5 
+                      rounded-xl text-sm text-white focus:outline-none 
+                      focus:border-red-500/50"
+                  />
+                </div>
+              ))}
             </div>
             
             <div className="flex justify-center mt-8">
