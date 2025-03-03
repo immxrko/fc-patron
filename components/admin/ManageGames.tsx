@@ -45,6 +45,19 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
   }>({})
 
   useEffect(() => {
+    const fetchSeasons = async () => {
+      const { data: seasonsData } = await supabase
+        .from('seasons')
+        .select('name')
+        .order('name', { ascending: false })
+
+      if (seasonsData && seasonsData.length > 0) {
+        setSeasons(seasonsData)
+        setSelectedSeason(seasonsData[0].name)
+        setNeedsRefetch(true) // Trigger initial match fetch
+      }
+    }
+
     fetchSeasons()
   }, [])
 
@@ -60,31 +73,6 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
       setNeedsRefetch(false)
     }
   }, [selectedSeason, showNotPlayed, needsRefetch])
-
-  const fetchSeasons = async () => {
-    const { data, error } = await supabase
-      .from('seasons')
-      .select('name')
-      .order('id', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching seasons:', error)
-      return
-    }
-
-    if (data) {
-      setSeasons(data)
-      // Set the newest season (first one) as default
-      if (data.length > 0) {
-        setSelectedSeason(data[0].name)
-      }
-    }
-  }
-
-  // Helper function to check if current season is the newest
-  const isNewestSeason = () => {
-    return seasons.length > 0 && selectedSeason === seasons[0].name
-  }
 
   const fetchMatches = async () => {
     try {
@@ -259,7 +247,7 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
 
             <div className="flex items-center gap-2 md:gap-3">
               {/* Only show the button for the newest season */}
-              {isNewestSeason() && (
+              {seasons.length > 0 && selectedSeason === seasons[0].name && (
                 <motion.button
                   onClick={() => setShowNotPlayed(!showNotPlayed)}
                   className={`px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-medium transition-colors 
@@ -304,9 +292,6 @@ export default function ManageGames({ onBack, players }: ManageGamesProps) {
                           setSelectedSeason(season.name)
                           setIsSeasonDropdownOpen(false)
                           setNeedsRefetch(true)
-                          if (!isNewestSeason()) {
-                            setShowNotPlayed(false)
-                          }
                         }}
                         className={`w-full px-4 py-2 text-left text-sm transition-colors
                           ${selectedSeason === season.name 

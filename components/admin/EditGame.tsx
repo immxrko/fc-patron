@@ -999,11 +999,21 @@ useEffect(() => {
                       focus:border-red-500/50"
                   >
                     <option value="" disabled>Player In</option>
-                    {availablePlayers.map(player => (
-                      <option key={player.ID} value={player.ID}>
-                        {player.Name}
-                      </option>
-                    ))}
+                    {selectedSubs
+                      .filter(subId => !subs
+                        .slice(0, index)
+                        .map(s => s.playerInId)
+                        .includes(String(subId))
+                      )
+                      .map(subId => {
+                        const player = players.find(p => p.ID === parseInt(String(subId)))
+                        if (!player) return null
+                        return (
+                          <option key={player.ID} value={player.ID}>
+                            {player.Name}
+                          </option>
+                        )
+                      })}
                   </select>
                   <input
                     type="number"
