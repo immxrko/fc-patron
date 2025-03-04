@@ -7,9 +7,12 @@ import { AdminProvider } from '@/context/AdminContext'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'FC Patron',
-  description: 'Official website of FC Patron',
+  title: 'FC Patron Wien',
+  description: 'Der FC Patron ist ein aufstrebender Amateurverein aus Wien, der in der 1. Klasse B seine Heimspiele am WAF-Platz austrägt. Wir laden fußballbegeisterte Spieler herzlich zu Probetrainings ein. Gemeinsam schreiben wir Fußballgeschichte in Wien. #rotschwarzgold',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.png'
+  }
 }
 
 export default function RootLayout({

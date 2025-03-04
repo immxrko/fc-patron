@@ -1,7 +1,7 @@
 {
   "name": "FC Patron",
   "short_name": "FC Patron",
-  "description": "Official app for FC Patron football club",
+  "description": "Der FC Patron ist ein aufstrebender Amateurverein aus Wien, der in der 1. Klasse B seine Heimspiele am WAF-Platz austrägt. Wir laden fußballbegeisterte Spieler herzlich zu Probetrainings ein. Gemeinsam schreiben wir Fußballgeschichte in Wien. #rotschwarzgold",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#000000",
