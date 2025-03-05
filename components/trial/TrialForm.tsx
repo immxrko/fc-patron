@@ -80,7 +80,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
       // Send push notification with Date object
       await sendPushNotification({
         ...formPayload,
-        trial_date: selectedDate
+        trial_date: new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000)
       })
       
       setSubmittedName(name)
