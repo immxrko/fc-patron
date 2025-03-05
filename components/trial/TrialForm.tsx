@@ -61,12 +61,13 @@ export default function TrialForm({ onBack }: TrialFormProps) {
       const form = e.currentTarget
       const formData = new FormData(form)
       const name = formData.get('name') as string
+
       
       const formPayload = {
         full_name: name,
         phone_number: formData.get('phone') as string,
         position: formData.get('position') as string,
-        trial_date: selectedDate,
+        trial_date: new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Add 24h before formatting
         last_club: formData.get('lastClub') as string || null
       }
 
@@ -76,8 +77,11 @@ export default function TrialForm({ onBack }: TrialFormProps) {
 
       if (error) throw error
       
-      // Send push notification
-      await sendPushNotification(formPayload)
+      // Send push notification with Date object
+      await sendPushNotification({
+        ...formPayload,
+        trial_date: selectedDate
+      })
       
       setSubmittedName(name)
       setIsSubmitted(true)
