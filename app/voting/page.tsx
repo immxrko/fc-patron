@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Star, TrendingUp, Check, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Trophy, Star, TrendingUp, Check, ArrowRight, ArrowLeft, Award } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 interface Nominee {
@@ -193,6 +193,13 @@ export default function VotingPage() {
     }
   }
 
+  // Helper function to get nominee image by name
+  const getNomineeImage = (name: string) => {
+    const allNominees = [...nominees.newcomer, ...nominees.playerOfSeason, ...nominees.mostImproved]
+    const nominee = allNominees.find(n => n.name === name)
+    return nominee?.image || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+  }
+
   const renderNomineeCard = (nominee: Nominee, category: string, isSelected: boolean) => (
     <motion.div
       key={nominee.name}
@@ -242,6 +249,51 @@ export default function VotingPage() {
       </div>
     </motion.div>
   )
+
+  const renderSummaryCard = (title: string, voteName: string, icon: any, delay: number) => {
+    const IconComponent = icon
+    const nomineeImage = getNomineeImage(voteName)
+    
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay, duration: 0.5 }}
+        className="bg-gradient-to-br from-black/40 to-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6 hover:border-yellow-500/30 transition-all duration-300"
+      >
+        <div className="flex items-center gap-4">
+          {/* Award Icon */}
+          <div className="flex-shrink-0 w-16 h-16 bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 rounded-xl flex items-center justify-center border border-yellow-500/20">
+            <IconComponent className="w-8 h-8 text-yellow-500" />
+          </div>
+          
+          {/* Player Info */}
+          <div className="flex-1 min-w-0">
+            <h3 className="text-sm font-medium text-yellow-400 mb-1">{title}</h3>
+            <p className="text-lg font-bold text-white truncate">{voteName}</p>
+          </div>
+          
+          {/* Player Image */}
+          <div className="flex-shrink-0 relative">
+            <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-yellow-500/30">
+              <img
+                src={nomineeImage}
+                alt={voteName}
+                className="w-full h-full object-cover object-top"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                }}
+              />
+            </div>
+            <div className="absolute -top-1 -right-1 w-6 h-6 bg-yellow-500 rounded-full flex items-center justify-center">
+              <Check className="w-4 h-4 text-black" />
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    )
+  }
 
   if (loading) {
     return (
@@ -399,7 +451,7 @@ export default function VotingPage() {
               </motion.div>
             )}
 
-            {/* Step 5: Summary */}
+            {/* Step 5: Enhanced Summary */}
             {currentStep === 4 && (
               <motion.div
                 key="summary"
@@ -413,28 +465,47 @@ export default function VotingPage() {
                   {error && <p className="text-red-400 text-sm mt-4">{error}</p>}
                 </div>
 
-                <div className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-8">
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between py-4 border-b border-white/10">
-                      <span className="text-white/80">Voter:</span>
-                      <span className="text-white font-medium">{voterName}</span>
+                <div className="space-y-6">
+                  {/* Voter Info Card */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5 }}
+                    className="bg-gradient-to-br from-black/40 to-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-gradient-to-br from-red-500/20 to-red-600/10 rounded-xl flex items-center justify-center border border-red-500/20">
+                        <Award className="w-8 h-8 text-red-500" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-medium text-red-400 mb-1">Voter</h3>
+                        <p className="text-2xl font-bold text-white">{voterName}</p>
+                      </div>
                     </div>
-                    
-                    <div className="flex items-center justify-between py-4 border-b border-white/10">
-                      <span className="text-white/80">Newcomer of the Season:</span>
-                      <span className="text-yellow-400 font-medium">{votes.newcomer}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between py-4 border-b border-white/10">
-                      <span className="text-white/80">Player of the Season:</span>
-                      <span className="text-yellow-400 font-medium">{votes.playerOfSeason}</span>
-                    </div>
-                    
-                    <div className="flex items-center justify-between py-4">
-                      <span className="text-white/80">Most Improved Player:</span>
-                      <span className="text-yellow-400 font-medium">{votes.mostImproved}</span>
-                    </div>
+                  </motion.div>
+
+                  {/* Award Categories */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    {renderSummaryCard("Newcomer of the Season", votes.newcomer, Star, 0.1)}
+                    {renderSummaryCard("Player of the Season", votes.playerOfSeason, Trophy, 0.2)}
+                    {renderSummaryCard("Most Improved Player", votes.mostImproved, TrendingUp, 0.3)}
                   </div>
+
+                  {/* Final Confirmation */}
+                  <motion.div
+                    initial={{ opacity: 0, y: 30 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.4, duration: 0.5 }}
+                    className="bg-gradient-to-br from-yellow-500/10 to-yellow-600/5 backdrop-blur-sm rounded-2xl border border-yellow-500/20 p-6 text-center"
+                  >
+                    <div className="flex items-center justify-center gap-3 mb-4">
+                      <Check className="w-6 h-6 text-yellow-500" />
+                      <h3 className="text-xl font-bold text-white">Ready to Submit</h3>
+                    </div>
+                    <p className="text-white/80">
+                      By submitting, you confirm that these are your final votes for the FC Patron Season Awards 2024/25.
+                    </p>
+                  </motion.div>
                 </div>
               </motion.div>
             )}
