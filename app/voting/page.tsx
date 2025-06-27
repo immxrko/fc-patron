@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Trophy, Star, TrendingUp, Check, ArrowRight, ArrowLeft } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -10,27 +10,27 @@ interface Nominee {
   image: string
 }
 
-const nominees = {
+const nomineeNames = {
   newcomer: [
-    { name: 'JEFIMIC Nedeljko', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'IZVERNAR Iosif-Cornel', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'ZIVKOVIC Stefan', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'RAMHAPP Elias', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'SULJIC Mathias', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' }
+    'JEFIMIC Nedeljko',
+    'IZVERNAR Iosif-Cornel',
+    'ZIVKOVIC Stefan',
+    'RAMHAPP Elias',
+    'SULJIC Mathias'
   ],
   playerOfSeason: [
-    { name: 'SAGIROGLU Ogulcan', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'ANICIC-ZUPARIC Lukas', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'PRIBILL Adrian', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'JORGANOVIC Philipp', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'ULUSOY Burak', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' }
+    'SAGIROGLU Ogulcan',
+    'ANICIC-ZUPARIC Lukas',
+    'PRIBILL Adrian',
+    'JORGANOVIC Philipp',
+    'ULUSOY Burak'
   ],
   mostImproved: [
-    { name: 'SCHUCKERT Luca', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'SAGIROGLU Ogulcan', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'ZIER Alessandro', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'DRAGONI Paul', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' },
-    { name: 'MOSER Sebastian', image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png' }
+    'SCHUCKERT Luca',
+    'SAGIROGLU Ogulcan',
+    'ZIER Alessandro',
+    'DRAGONI Paul',
+    'MOSER Sebastian'
   ]
 }
 
@@ -42,9 +42,19 @@ export default function VotingPage() {
     playerOfSeason: '',
     mostImproved: ''
   })
+  const [nominees, setNominees] = useState<{
+    newcomer: Nominee[]
+    playerOfSeason: Nominee[]
+    mostImproved: Nominee[]
+  }>({
+    newcomer: [],
+    playerOfSeason: [],
+    mostImproved: []
+  })
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(true)
 
   const steps = [
     { title: 'Your Information', icon: Star },
@@ -53,6 +63,76 @@ export default function VotingPage() {
     { title: 'Most Improved Player', icon: TrendingUp, category: 'mostImproved' },
     { title: 'Confirm Your Votes', icon: Check }
   ]
+
+  // Fetch player images from database
+  useEffect(() => {
+    const fetchPlayerImages = async () => {
+      try {
+        setLoading(true)
+        
+        // Get all nominee names
+        const allNames = [
+          ...nomineeNames.newcomer,
+          ...nomineeNames.playerOfSeason,
+          ...nomineeNames.mostImproved
+        ]
+
+        // Fetch player data from database
+        const { data: players, error } = await supabase
+          .from('players')
+          .select('Name, BildURL')
+          .in('Name', allNames)
+
+        if (error) throw error
+
+        // Create a map of player names to images
+        const playerImageMap = new Map()
+        players?.forEach(player => {
+          playerImageMap.set(player.Name, player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png')
+        })
+
+        // Build nominees object with images
+        const nomineesWithImages = {
+          newcomer: nomineeNames.newcomer.map(name => ({
+            name,
+            image: playerImageMap.get(name) || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+          })),
+          playerOfSeason: nomineeNames.playerOfSeason.map(name => ({
+            name,
+            image: playerImageMap.get(name) || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+          })),
+          mostImproved: nomineeNames.mostImproved.map(name => ({
+            name,
+            image: playerImageMap.get(name) || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+          }))
+        }
+
+        setNominees(nomineesWithImages)
+      } catch (error) {
+        console.error('Error fetching player images:', error)
+        // Fallback to default images if database fetch fails
+        const fallbackNominees = {
+          newcomer: nomineeNames.newcomer.map(name => ({
+            name,
+            image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+          })),
+          playerOfSeason: nomineeNames.playerOfSeason.map(name => ({
+            name,
+            image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+          })),
+          mostImproved: nomineeNames.mostImproved.map(name => ({
+            name,
+            image: 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'
+          }))
+        }
+        setNominees(fallbackNominees)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchPlayerImages()
+  }, [])
 
   const handleVote = (category: string, nominee: string) => {
     setVotes(prev => ({ ...prev, [category]: nominee }))
@@ -143,7 +223,7 @@ export default function VotingPage() {
           <img
             src={nominee.image}
             alt={nominee.name}
-            className="w-full h-full object-cover rounded-full border-2 border-white/20"
+            className="w-full h-full object-cover object-top rounded-full border-2 border-white/20"
             onError={(e) => {
               const target = e.target as HTMLImageElement;
               target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
@@ -162,6 +242,21 @@ export default function VotingPage() {
       </div>
     </motion.div>
   )
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="text-center"
+        >
+          <div className="w-16 h-16 border-4 border-yellow-500/20 border-t-yellow-500 rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-white/80">Loading nominees...</p>
+        </motion.div>
+      </div>
+    )
+  }
 
   if (isSubmitted) {
     return (
