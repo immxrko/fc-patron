@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Star, TrendingUp, Award, RotateCcw, Eye, EyeOff, Gift } from 'lucide-react'
+import { Trophy, Star, TrendingUp, Gift } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/context/AdminContext'
 import LoginScreen from '@/components/auth/LoginScreen'
@@ -94,7 +94,7 @@ function AwardCard({ title, icon: Icon, winner, onReveal, isRevealed, canReveal,
               ) : (
                 <div className="text-center">
                   <div className="w-24 h-24 bg-black/40 rounded-full flex items-center justify-center mb-6 mx-auto border-2 border-dashed border-white/20">
-                    <Eye className="w-12 h-12 text-white/40" />
+                    <Gift className="w-12 h-12 text-white/40" />
                   </div>
                   <h4 className="text-xl font-bold text-white/60 mb-2">Waiting...</h4>
                   <p className="text-white/40">Reveal previous awards first</p>
@@ -204,7 +204,6 @@ export default function AdminAwards() {
   const [loading, setLoading] = useState(true)
   const [revealedCards, setRevealedCards] = useState<Set<string>>(new Set())
   const [currentRevealIndex, setCurrentRevealIndex] = useState(0)
-  const [showAllResults, setShowAllResults] = useState(false)
   const { checkAdminStatus } = useAdmin()
 
   const awards = [
@@ -335,16 +334,6 @@ export default function AdminAwards() {
     }
   }
 
-  const resetReveals = () => {
-    setRevealedCards(new Set())
-    setCurrentRevealIndex(0)
-  }
-
-  const revealAll = () => {
-    setRevealedCards(new Set(awards.map(award => award.key)))
-    setCurrentRevealIndex(awards.length)
-  }
-
   if (isAdmin === null || loading) {
     return <LoadingScreen />
   }
@@ -419,39 +408,6 @@ export default function AdminAwards() {
               </p>
             </div>
           </div>
-
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            <motion.button
-              onClick={resetReveals}
-              className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-white transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <RotateCcw className="w-4 h-4" />
-              Reset Cards
-            </motion.button>
-
-            <motion.button
-              onClick={revealAll}
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-xl text-yellow-400 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <Gift className="w-4 h-4" />
-              Reveal All
-            </motion.button>
-            
-            <motion.button
-              onClick={() => setShowAllResults(!showAllResults)}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl text-blue-400 transition-colors"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              {showAllResults ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {showAllResults ? 'Hide' : 'Show'} All Results
-            </motion.button>
-          </div>
         </motion.div>
 
         {/* Award Cards */}
@@ -476,74 +432,6 @@ export default function AdminAwards() {
             )
           })}
         </div>
-
-        {/* Detailed Results */}
-        <AnimatePresence>
-          {showAllResults && (
-            <motion.div
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              className="space-y-8"
-            >
-              {awards.map((award) => {
-                const categoryResults = results[award.key as keyof AwardResults] as VoteResult[]
-                
-                return (
-                  <div key={award.key} className="bg-black/20 backdrop-blur-sm rounded-2xl border border-white/10 p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <award.icon className="w-6 h-6 text-yellow-500" />
-                      <h3 className="text-xl font-bold text-white">{award.title}</h3>
-                    </div>
-                    
-                    <div className="space-y-4">
-                      {categoryResults.map((result, index) => (
-                        <div key={result.name} className="flex items-center gap-4 p-4 bg-black/20 rounded-xl">
-                          <div className="flex items-center gap-3 flex-1">
-                            <span className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${
-                              index === 0 ? 'bg-yellow-500 text-black' :
-                              index === 1 ? 'bg-gray-400 text-black' :
-                              index === 2 ? 'bg-orange-600 text-white' :
-                              'bg-black/40 text-white'
-                            }`}>
-                              {index + 1}
-                            </span>
-                            
-                            <img
-                              src={result.image}
-                              alt={result.name}
-                              className="w-12 h-12 object-cover object-top rounded-full"
-                              onError={(e) => {
-                                const target = e.target as HTMLImageElement;
-                                target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
-                              }}
-                            />
-                            
-                            <div>
-                              <h4 className="font-bold text-white">{result.name}</h4>
-                              <p className="text-sm text-gray-400">{result.votes} votes ({result.percentage}%)</p>
-                            </div>
-                          </div>
-                          
-                          <div className="w-32">
-                            <div className="h-2 bg-black/40 rounded-full overflow-hidden">
-                              <motion.div
-                                className="h-full bg-gradient-to-r from-yellow-500 to-yellow-600 rounded-full"
-                                initial={{ width: 0 }}
-                                animate={{ width: `${result.percentage}%` }}
-                                transition={{ duration: 1, delay: index * 0.1 }}
-                              />
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )
-              })}
-            </motion.div>
-          )}
-        </AnimatePresence>
       </div>
     </div>
   )
