@@ -297,7 +297,7 @@ export default function VotingPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center pb-24 md:pb-0">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -312,7 +312,7 @@ export default function VotingPage() {
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="min-h-screen flex items-center justify-center p-4 pb-24 md:pb-4">
         <motion.div
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -337,7 +337,7 @@ export default function VotingPage() {
   }
 
   return (
-    <div className="min-h-screen relative overflow-hidden">
+    <div className="min-h-screen relative overflow-hidden pb-24 md:pb-0">
       {/* Background Effects */}
       <div className="fixed inset-0 pointer-events-none">
         <div className="absolute -top-32 -right-32 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl" />
@@ -512,7 +512,7 @@ export default function VotingPage() {
           </AnimatePresence>
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-12">
+          <div className="flex items-center justify-between mt-12 mb-8">
             <motion.button
               onClick={handleBack}
               disabled={currentStep === 0}
