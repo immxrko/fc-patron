@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Trophy, Star, TrendingUp, Award, RotateCcw, Eye, EyeOff } from 'lucide-react'
+import { Trophy, Star, TrendingUp, Award, RotateCcw, Eye, EyeOff, Gift } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/context/AdminContext'
 import LoginScreen from '@/components/auth/LoginScreen'
@@ -23,108 +23,22 @@ interface AwardResults {
   totalVotes: number
 }
 
-interface ScratchCardProps {
+interface AwardCardProps {
   title: string
   icon: any
   winner: VoteResult
   onReveal: () => void
   isRevealed: boolean
   canReveal: boolean
+  position: number
 }
 
-function ScratchCard({ title, icon: Icon, winner, onReveal, isRevealed, canReveal }: ScratchCardProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [isScratching, setIsScratching] = useState(false)
-  const [scratchPercentage, setScratchPercentage] = useState(0)
-
-  useEffect(() => {
-    if (!canvasRef.current || isRevealed) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    // Set canvas size
-    canvas.width = canvas.offsetWidth * 2
-    canvas.height = canvas.offsetHeight * 2
-    ctx.scale(2, 2)
-
-    // Create scratch surface
-    const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height)
-    gradient.addColorStop(0, '#FFD700')
-    gradient.addColorStop(0.5, '#FFA500')
-    gradient.addColorStop(1, '#FF8C00')
-    
-    ctx.fillStyle = gradient
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    // Add FC Patron logo pattern
-    ctx.globalAlpha = 0.1
-    ctx.fillStyle = '#000'
-    ctx.font = 'bold 24px Arial'
-    ctx.textAlign = 'center'
-    
-    for (let y = 30; y < canvas.height; y += 60) {
-      for (let x = 50; x < canvas.width; x += 100) {
-        ctx.fillText('FC PATRON', x, y)
-      }
-    }
-    
-    ctx.globalAlpha = 1
-    ctx.fillStyle = '#000'
-    ctx.font = 'bold 32px Arial'
-    ctx.textAlign = 'center'
-    ctx.fillText('SCRATCH TO REVEAL', canvas.width / 4, canvas.height / 4)
-    
-    // Add trophy icon
-    ctx.font = '48px Arial'
-    ctx.fillText('🏆', canvas.width / 4, canvas.height / 4 + 50)
-
-  }, [isRevealed])
-
-  const scratch = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!canvasRef.current || !canReveal || isRevealed) return
-
-    const canvas = canvasRef.current
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-
-    const rect = canvas.getBoundingClientRect()
-    const x = (e.clientX - rect.left) * 2
-    const y = (e.clientY - rect.top) * 2
-
-    ctx.globalCompositeOperation = 'destination-out'
-    ctx.beginPath()
-    ctx.arc(x, y, 30, 0, 2 * Math.PI)
-    ctx.fill()
-
-    // Calculate scratch percentage
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
-    const pixels = imageData.data
-    let transparentPixels = 0
-
-    for (let i = 3; i < pixels.length; i += 4) {
-      if (pixels[i] === 0) transparentPixels++
-    }
-
-    const percentage = (transparentPixels / (pixels.length / 4)) * 100
-    setScratchPercentage(percentage)
-
-    if (percentage > 30) {
-      onReveal()
-    }
-  }
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (isScratching) {
-      scratch(e)
-    }
-  }
-
+function AwardCard({ title, icon: Icon, winner, onReveal, isRevealed, canReveal, position }: AwardCardProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: position * 0.1 }}
       className="relative bg-black/20 backdrop-blur-sm rounded-3xl border border-white/10 overflow-hidden"
     >
       {/* Card Header */}
@@ -137,79 +51,148 @@ function ScratchCard({ title, icon: Icon, winner, onReveal, isRevealed, canRevea
         </div>
       </div>
 
-      {/* Scratch Area */}
+      {/* Content Area */}
       <div className="relative h-80 p-6">
-        {/* Winner Content (behind scratch layer) */}
-        <div className="absolute inset-6 flex flex-col items-center justify-center text-center">
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ 
-              scale: isRevealed ? 1 : 0.8, 
-              opacity: isRevealed ? 1 : 0 
-            }}
-            transition={{ duration: 0.5 }}
-            className="flex flex-col items-center"
-          >
-            <div className="relative w-24 h-24 mb-4">
-              <img
-                src={winner.image}
-                alt={winner.name}
-                className="w-full h-full object-cover object-top rounded-full border-4 border-yellow-500"
-                onError={(e) => {
-                  const target = e.target as HTMLImageElement;
-                  target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
-                }}
-              />
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-yellow-500 rounded-full flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-black" />
-              </div>
-            </div>
-            
-            <h4 className="text-2xl font-bold text-white mb-2">{winner.name}</h4>
-            <div className="flex items-center gap-2 text-yellow-500">
-              <span className="text-lg font-bold">{winner.votes} votes</span>
-              <span className="text-sm">({winner.percentage}%)</span>
-            </div>
-          </motion.div>
-        </div>
+        <AnimatePresence mode="wait">
+          {!isRevealed ? (
+            <motion.div
+              key="hidden"
+              initial={{ opacity: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              transition={{ duration: 0.3 }}
+              className="absolute inset-6 flex flex-col items-center justify-center"
+            >
+              {canReveal ? (
+                <div className="text-center">
+                  <motion.div
+                    animate={{ 
+                      scale: [1, 1.1, 1],
+                      rotate: [0, 5, -5, 0]
+                    }}
+                    transition={{ 
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut"
+                    }}
+                    className="w-24 h-24 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center mb-6 mx-auto shadow-lg shadow-yellow-500/30"
+                  >
+                    <Gift className="w-12 h-12 text-black" />
+                  </motion.div>
+                  
+                  <h4 className="text-2xl font-bold text-white mb-4">Ready to Reveal!</h4>
+                  <p className="text-white/60 mb-6">Click the button below to reveal the winner</p>
+                  
+                  <motion.button
+                    onClick={onReveal}
+                    className="px-8 py-4 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-bold rounded-xl hover:scale-105 transition-transform shadow-lg shadow-yellow-500/30"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    🎉 Reveal Winner
+                  </motion.button>
+                </div>
+              ) : (
+                <div className="text-center">
+                  <div className="w-24 h-24 bg-black/40 rounded-full flex items-center justify-center mb-6 mx-auto border-2 border-dashed border-white/20">
+                    <Eye className="w-12 h-12 text-white/40" />
+                  </div>
+                  <h4 className="text-xl font-bold text-white/60 mb-2">Waiting...</h4>
+                  <p className="text-white/40">Reveal previous awards first</p>
+                </div>
+              )}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="revealed"
+              initial={{ opacity: 0, scale: 0.8, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="absolute inset-6 flex flex-col items-center justify-center text-center"
+            >
+              {/* Confetti Effect */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: [0, 1, 0] }}
+                transition={{ duration: 1, delay: 0.2 }}
+                className="absolute inset-0 pointer-events-none"
+              >
+                {[...Array(20)].map((_, i) => (
+                  <motion.div
+                    key={i}
+                    className="absolute w-2 h-2 bg-yellow-500 rounded-full"
+                    style={{
+                      left: `${Math.random() * 100}%`,
+                      top: `${Math.random() * 100}%`,
+                    }}
+                    animate={{
+                      y: [0, -50, 0],
+                      x: [0, Math.random() * 40 - 20, 0],
+                      opacity: [0, 1, 0],
+                      scale: [0, 1, 0],
+                    }}
+                    transition={{
+                      duration: 1.5,
+                      delay: Math.random() * 0.5,
+                      ease: "easeOut"
+                    }}
+                  />
+                ))}
+              </motion.div>
 
-        {/* Scratch Canvas */}
-        {!isRevealed && canReveal && (
-          <canvas
-            ref={canvasRef}
-            className="absolute inset-6 w-full h-full cursor-pointer rounded-xl"
-            onMouseDown={() => setIsScratching(true)}
-            onMouseUp={() => setIsScratching(false)}
-            onMouseLeave={() => setIsScratching(false)}
-            onMouseMove={handleMouseMove}
-            onClick={scratch}
-          />
-        )}
-
-        {/* Waiting State */}
-        {!canReveal && !isRevealed && (
-          <div className="absolute inset-6 flex items-center justify-center bg-black/40 rounded-xl border-2 border-dashed border-white/20">
-            <div className="text-center">
-              <Eye className="w-12 h-12 text-white/40 mx-auto mb-3" />
-              <p className="text-white/60 font-medium">Waiting for previous reveal...</p>
-            </div>
-          </div>
-        )}
+              {/* Winner Display */}
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                transition={{ delay: 0.3, type: "spring", stiffness: 200 }}
+                className="relative"
+              >
+                <div className="relative w-32 h-32 mb-6">
+                  <img
+                    src={winner.image}
+                    alt={winner.name}
+                    className="w-full h-full object-cover object-top rounded-full border-4 border-yellow-500 shadow-lg shadow-yellow-500/30"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                    }}
+                  />
+                  <motion.div
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ delay: 0.5, type: "spring", stiffness: 200 }}
+                    className="absolute -top-3 -right-3 w-12 h-12 bg-gradient-to-br from-yellow-500 to-yellow-600 rounded-full flex items-center justify-center shadow-lg"
+                  >
+                    <Trophy className="w-7 h-7 text-black" />
+                  </motion.div>
+                </div>
+              </motion.div>
+              
+              <motion.h4
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.6 }}
+                className="text-2xl font-bold text-white mb-3"
+              >
+                🏆 {winner.name}
+              </motion.h4>
+              
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.7 }}
+                className="flex items-center gap-3 text-yellow-500"
+              >
+                <div className="px-4 py-2 bg-yellow-500/20 rounded-full border border-yellow-500/30">
+                  <span className="text-lg font-bold">{winner.votes} votes</span>
+                </div>
+                <div className="px-4 py-2 bg-yellow-500/20 rounded-full border border-yellow-500/30">
+                  <span className="text-lg font-bold">{winner.percentage}%</span>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
-
-      {/* Reveal Button (fallback) */}
-      {canReveal && !isRevealed && (
-        <div className="p-6 border-t border-white/10">
-          <motion.button
-            onClick={onReveal}
-            className="w-full px-4 py-3 bg-gradient-to-r from-yellow-500 to-yellow-600 text-black font-bold rounded-xl hover:scale-105 transition-transform"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            Reveal Winner
-          </motion.button>
-        </div>
-      )}
     </motion.div>
   )
 }
@@ -357,6 +340,11 @@ export default function AdminAwards() {
     setCurrentRevealIndex(0)
   }
 
+  const revealAll = () => {
+    setRevealedCards(new Set(awards.map(award => award.key)))
+    setCurrentRevealIndex(awards.length)
+  }
+
   if (isAdmin === null || loading) {
     return <LoadingScreen />
   }
@@ -427,13 +415,13 @@ export default function AdminAwards() {
                 Season Awards Results
               </h1>
               <p className="text-white/80 mt-2">
-                {results.totalVotes} total votes • Scratch to reveal winners
+                {results.totalVotes} total votes • Click to reveal winners
               </p>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="flex items-center justify-center gap-4">
+          <div className="flex items-center justify-center gap-4 flex-wrap">
             <motion.button
               onClick={resetReveals}
               className="flex items-center gap-2 px-4 py-2 bg-black/40 hover:bg-black/60 rounded-xl text-white transition-colors"
@@ -443,10 +431,20 @@ export default function AdminAwards() {
               <RotateCcw className="w-4 h-4" />
               Reset Cards
             </motion.button>
+
+            <motion.button
+              onClick={revealAll}
+              className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-xl text-yellow-400 transition-colors"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Gift className="w-4 h-4" />
+              Reveal All
+            </motion.button>
             
             <motion.button
               onClick={() => setShowAllResults(!showAllResults)}
-              className="flex items-center gap-2 px-4 py-2 bg-yellow-500/20 hover:bg-yellow-500/30 rounded-xl text-yellow-400 transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-500/20 hover:bg-blue-500/30 rounded-xl text-blue-400 transition-colors"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -456,7 +454,7 @@ export default function AdminAwards() {
           </div>
         </motion.div>
 
-        {/* Scratch Cards */}
+        {/* Award Cards */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-12">
           {awards.map((award, index) => {
             const categoryResults = results[award.key as keyof AwardResults] as VoteResult[]
@@ -465,7 +463,7 @@ export default function AdminAwards() {
             if (!winner) return null
 
             return (
-              <ScratchCard
+              <AwardCard
                 key={award.key}
                 title={award.title}
                 icon={award.icon}
@@ -473,6 +471,7 @@ export default function AdminAwards() {
                 onReveal={() => handleReveal(award.key)}
                 isRevealed={revealedCards.has(award.key)}
                 canReveal={index === currentRevealIndex}
+                position={index}
               />
             )
           })}
