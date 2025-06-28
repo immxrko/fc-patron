@@ -214,17 +214,19 @@ export default function ManagePlayers({
       return matchesSearch && matchesStatus && matchesTeam && matchesPosition
     })
     .sort((a, b) => {
-      let aValue = a[sortField]
-      let bValue = b[sortField]
+      let aValue: string | number | boolean = a[sortField]
+      let bValue: string | number | boolean = b[sortField]
       
+      // Convert boolean to number for comparison
       if (typeof aValue === 'boolean') {
         aValue = aValue ? 1 : 0
-        bValue = bValue ? 1 : 0
+        bValue = (bValue as boolean) ? 1 : 0
       }
       
+      // Convert strings to lowercase for comparison
       if (typeof aValue === 'string') {
         aValue = aValue.toLowerCase()
-        bValue = bValue.toLowerCase()
+        bValue = (bValue as string).toLowerCase()
       }
       
       if (sortOrder === 'asc') {
