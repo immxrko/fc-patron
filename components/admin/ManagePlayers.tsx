@@ -18,7 +18,8 @@ import {
   Activity,
   Filter,
   SortAsc,
-  SortDesc
+  SortDesc,
+  Image
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -495,6 +496,21 @@ function PlayerCard({
           </div>
         </div>
 
+        {/* Image URL Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">
+            <Image className="w-4 h-4 inline mr-2" />
+            Image URL
+          </label>
+          <input
+            type="url"
+            value={editingPlayer.BildURL}
+            onChange={(e) => onEditingPlayerChange({...editingPlayer, BildURL: e.target.value})}
+            placeholder="https://example.com/image.jpg"
+            className="w-full px-3 py-2 bg-black/20 border border-white/5 rounded-lg text-white text-sm"
+          />
+        </div>
+
         {/* Quick Edit Fields */}
         <div className="grid grid-cols-2 gap-3">
           <select
@@ -538,6 +554,20 @@ function PlayerCard({
               <option key={foot.value} value={foot.value}>{foot.label}</option>
             ))}
           </select>
+        </div>
+
+        {/* Birthday Field */}
+        <div>
+          <label className="block text-sm font-medium text-gray-400 mb-2">
+            <Calendar className="w-4 h-4 inline mr-2" />
+            Birthday
+          </label>
+          <input
+            type="date"
+            value={editingPlayer.Geburtsdatum}
+            onChange={(e) => onEditingPlayerChange({...editingPlayer, Geburtsdatum: e.target.value})}
+            className="w-full px-3 py-2 bg-black/20 border border-white/5 rounded-lg text-white text-sm"
+          />
         </div>
 
         {/* Action Buttons */}
@@ -647,6 +677,19 @@ function PlayerCard({
             </span>
           </div>
         )}
+
+        {/* Image URL indicator */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Image className="w-4 h-4 text-gray-400" />
+            <span className="text-sm text-gray-400">Image</span>
+          </div>
+          <span className={`text-sm font-medium ${
+            player.BildURL ? 'text-green-400' : 'text-red-400'
+          }`}>
+            {player.BildURL ? 'Set' : 'Missing'}
+          </span>
+        </div>
       </div>
     </motion.div>
   )
@@ -696,6 +739,35 @@ function AddPlayerModal({ player, onSave, onCancel, onPlayerChange, loading }: A
               className="w-full px-4 py-2 bg-black/20 border border-white/5 rounded-xl 
                 text-white focus:outline-none focus:border-red-500/50"
             />
+          </div>
+
+          {/* Image URL */}
+          <div>
+            <label className="block text-sm font-medium text-gray-400 mb-2">
+              <Image className="w-4 h-4 inline mr-2" />
+              Image URL
+            </label>
+            <input
+              type="url"
+              value={player.BildURL}
+              onChange={(e) => onPlayerChange({...player, BildURL: e.target.value})}
+              placeholder="https://example.com/image.jpg"
+              className="w-full px-4 py-2 bg-black/20 border border-white/5 rounded-xl 
+                text-white focus:outline-none focus:border-red-500/50"
+            />
+            {player.BildURL && (
+              <div className="mt-2">
+                <img
+                  src={player.BildURL}
+                  alt="Preview"
+                  className="w-16 h-16 object-cover rounded-lg border border-white/10"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.style.display = 'none';
+                  }}
+                />
+              </div>
+            )}
           </div>
 
           {/* Position & Team */}
@@ -769,19 +841,6 @@ function AddPlayerModal({ player, onSave, onCancel, onPlayerChange, loading }: A
               type="date"
               value={player.Geburtsdatum}
               onChange={(e) => onPlayerChange({...player, Geburtsdatum: e.target.value})}
-              className="w-full px-4 py-2 bg-black/20 border border-white/5 rounded-xl 
-                text-white focus:outline-none focus:border-red-500/50"
-            />
-          </div>
-
-          {/* Image URL */}
-          <div>
-            <label className="block text-sm font-medium text-gray-400 mb-2">Image URL</label>
-            <input
-              type="url"
-              value={player.BildURL}
-              onChange={(e) => onPlayerChange({...player, BildURL: e.target.value})}
-              placeholder="https://..."
               className="w-full px-4 py-2 bg-black/20 border border-white/5 rounded-xl 
                 text-white focus:outline-none focus:border-red-500/50"
             />
