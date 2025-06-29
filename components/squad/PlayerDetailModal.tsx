@@ -14,7 +14,9 @@ import {
   Award,
   TrendingUp,
   Footprints,
-  Shield
+  Shield,
+  GitCompare,
+  ChevronDown
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -53,20 +55,37 @@ interface CareerStats {
   seasons: SeasonStats[]
 }
 
+interface ComparisonPlayer {
+  ID: number
+  Name: string
+  Position: string
+  BildURL: string
+  KM_Res_Beides?: string
+  Fuß?: string
+  Geburtsdatum?: string
+  stats?: CareerStats
+}
+
 export default function PlayerDetailModal({ player, onClose }: PlayerDetailModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'seasons' | 'achievements'>('overview')
+  const [activeTab, setActiveTab] = useState<'overview' | 'seasons' | 'achievements' | 'compare'>('overview')
   const [careerStats, setCareerStats] = useState<CareerStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [selectedTeam, setSelectedTeam] = useState<'KM' | 'RES'>('KM')
+  const [comparisonPlayers, setComparisonPlayers] = useState<ComparisonPlayer[]>([])
+  const [selectedComparison, setSelectedComparison] = useState<ComparisonPlayer | null>(null)
+  const [isComparisonDropdownOpen, setIsComparisonDropdownOpen] = useState(false)
+  const [loadingComparison, setLoadingComparison] = useState(false)
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Activity },
     { id: 'seasons', label: 'By Season', icon: Calendar },
-    { id: 'achievements', label: 'Achievements', icon: Trophy }
+    { id: 'achievements', label: 'Achievements', icon: Trophy },
+    { id: 'compare', label: 'Compare', icon: GitCompare }
   ]
 
   useEffect(() => {
     fetchPlayerStats()
+    fetchComparisonPlayers()
   }, [player.ID, selectedTeam])
 
   const fetchPlayerStats = async () => {
@@ -167,6 +186,145 @@ export default function PlayerDetailModal({ player, onClose }: PlayerDetailModal
     }
   }
 
+  const fetchComparisonPlayers = async () => {
+    try {
+      // Fetch players with same position and team, excluding current player
+      const { data: squadData, error } = await supabase
+        .from('squad_details_view')
+        .select('playerid, playername, playerposition, playerbildurl')
+        .eq('km_res', selectedTeam)
+        .eq('playerposition', player.Position)
+        .neq('playerid', player.ID)
+
+      if (error) throw error
+
+      // Get unique players
+      const uniquePlayers = squadData?.reduce((acc: ComparisonPlayer[], current) => {
+        const existing = acc.find(p => p.ID === current.playerid)
+        if (!existing) {
+          acc.push({
+            ID: current.playerid,
+            Name: current.playername,
+            Position: current.playerposition,
+            BildURL: current.playerbildurl
+          })
+        }
+        return acc
+      }, []) || []
+
+      setComparisonPlayers(uniquePlayers)
+    } catch (error) {
+      console.error('Error fetching comparison players:', error)
+    }
+  }
+
+  const fetchComparisonPlayerStats = async (playerId: number) => {
+    try {
+      setLoadingComparison(true)
+
+      // Fetch season-by-season stats for comparison player
+      const { data: seasonData, error: seasonError } = await supabase
+        .from('squad_details_view')
+        .select('*')
+        .eq('playerid', playerId)
+        .eq('km_res', selectedTeam)
+        .order('seasonname', { ascending: false })
+
+      if (seasonError) throw seasonError
+
+      // Fetch clean sheets for goalkeepers
+      let cleanSheetsData = null
+      if (player.Position === 'GK') {
+        const { data: keeperData, error: keeperError } = await supabase
+          .from('keeper_clean_sheets')
+          .select('*')
+          .eq('playerid', playerId)
+          .eq('team', selectedTeam)
+
+        if (!keeperError) {
+          cleanSheetsData = keeperData
+        }
+      }
+
+      // Fetch cards data
+      const { data: cardsData, error: cardsError } = await supabase
+        .from('player_cards_by_season')
+        .select('*')
+        .eq('playerid', playerId)
+        .eq('team', selectedTeam)
+
+      if (cardsError) {
+        console.error('Error fetching cards:', cardsError)
+      }
+
+      // Process the data
+      const seasons: SeasonStats[] = []
+      let totalGames = 0
+      let totalGoals = 0
+      let totalAssists = 0
+      let totalCleanSheets = 0
+      let totalCards = 0
+
+      seasonData?.forEach(season => {
+        const games = parseInt(season.games) || 0
+        const goals = parseInt(season.goals) || 0
+        const assists = parseInt(season.assists) || 0
+        
+        // Get clean sheets for this season if goalkeeper
+        const cleanSheets = player.Position === 'GK' 
+          ? cleanSheetsData?.find(cs => cs.season === season.seasonname)?.clean_sheets || 0
+          : undefined
+
+        // Get cards for this season
+        const seasonCards = cardsData?.find(card => card.season === season.seasonname)
+        const yellowCards = seasonCards?.yellow_cards || 0
+        const redCards = seasonCards?.red_cards || 0
+
+        seasons.push({
+          season: season.seasonname,
+          games,
+          goals,
+          assists,
+          cleanSheets,
+          yellowCards,
+          redCards,
+          minutesPlayed: games * 90 // Estimate
+        })
+
+        totalGames += games
+        totalGoals += goals
+        totalAssists += assists
+        if (cleanSheets !== undefined) totalCleanSheets += cleanSheets
+        totalCards += yellowCards + redCards
+      })
+
+      const comparisonStats: CareerStats = {
+        totalGames,
+        totalGoals,
+        totalAssists,
+        totalCleanSheets: player.Position === 'GK' ? totalCleanSheets : undefined,
+        totalCards,
+        avgGoalsPerGame: totalGames > 0 ? totalGoals / totalGames : 0,
+        avgAssistsPerGame: totalGames > 0 ? totalAssists / totalGames : 0,
+        seasons
+      }
+
+      // Update the selected comparison player with stats
+      setSelectedComparison(prev => prev ? { ...prev, stats: comparisonStats } : null)
+
+    } catch (error) {
+      console.error('Error fetching comparison player stats:', error)
+    } finally {
+      setLoadingComparison(false)
+    }
+  }
+
+  const handleComparisonSelect = (comparisonPlayer: ComparisonPlayer) => {
+    setSelectedComparison(comparisonPlayer)
+    setIsComparisonDropdownOpen(false)
+    fetchComparisonPlayerStats(comparisonPlayer.ID)
+  }
+
   const getAge = () => {
     if (!player.Geburtsdatum) return null
     const birthDate = new Date(player.Geburtsdatum)
@@ -205,6 +363,52 @@ export default function PlayerDetailModal({ player, onClose }: PlayerDetailModal
       </div>
     </div>
   )
+
+  const ComparisonStatCard = ({ 
+    icon: Icon, 
+    label, 
+    playerValue, 
+    comparisonValue, 
+    color = 'text-white',
+    format = (val: any) => val
+  }: {
+    icon: any
+    label: string
+    playerValue: string | number
+    comparisonValue: string | number
+    color?: string
+    format?: (val: any) => string
+  }) => {
+    const playerNum = typeof playerValue === 'string' ? parseFloat(playerValue) : playerValue
+    const comparisonNum = typeof comparisonValue === 'string' ? parseFloat(comparisonValue) : comparisonValue
+    const playerBetter = playerNum > comparisonNum
+    const equal = playerNum === comparisonNum
+
+    return (
+      <div className="bg-black/20 rounded-xl p-4 border border-white/5">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-red-500/10 rounded-lg">
+            <Icon className="w-5 h-5 text-red-400" />
+          </div>
+          <p className="text-sm text-gray-400 font-medium">{label}</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="text-center">
+            <p className={`text-lg font-bold ${equal ? color : playerBetter ? 'text-green-400' : 'text-red-400'}`}>
+              {format(playerValue)}
+            </p>
+            <p className="text-xs text-gray-500">{player.Name}</p>
+          </div>
+          <div className="text-center">
+            <p className={`text-lg font-bold ${equal ? color : !playerBetter ? 'text-green-400' : 'text-red-400'}`}>
+              {format(comparisonValue)}
+            </p>
+            <p className="text-xs text-gray-500">{selectedComparison?.Name}</p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <AnimatePresence>
@@ -623,6 +827,176 @@ export default function PlayerDetailModal({ player, onClose }: PlayerDetailModal
                         </div>
                       </div>
                     </div>
+                  </motion.div>
+                )}
+
+                {/* Compare Tab */}
+                {activeTab === 'compare' && careerStats && (
+                  <motion.div
+                    key="compare"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -20 }}
+                    className="space-y-6"
+                  >
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-bold text-white">Compare with Other {player.Position}s</h3>
+                      
+                      {/* Player Selection Dropdown */}
+                      <div className="relative">
+                        <button
+                          onClick={() => setIsComparisonDropdownOpen(!isComparisonDropdownOpen)}
+                          className="flex items-center gap-2 px-4 py-2 bg-black/20 border border-white/10 rounded-lg text-white hover:bg-black/30 transition-colors"
+                        >
+                          <span className="text-sm">
+                            {selectedComparison ? selectedComparison.Name : `Select ${player.Position} to compare`}
+                          </span>
+                          <ChevronDown className={`w-4 h-4 transition-transform ${isComparisonDropdownOpen ? 'rotate-180' : ''}`} />
+                        </button>
+
+                        {isComparisonDropdownOpen && (
+                          <div className="absolute top-full right-0 mt-2 w-64 max-h-48 overflow-y-auto bg-black/90 border border-white/10 rounded-lg shadow-xl z-10">
+                            {comparisonPlayers.length > 0 ? (
+                              comparisonPlayers.map((compPlayer) => (
+                                <button
+                                  key={compPlayer.ID}
+                                  onClick={() => handleComparisonSelect(compPlayer)}
+                                  className="w-full flex items-center gap-3 p-3 hover:bg-white/5 transition-colors text-left"
+                                >
+                                  <img
+                                    src={compPlayer.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
+                                    alt={compPlayer.Name}
+                                    className="w-8 h-8 rounded-lg object-cover object-top"
+                                    onError={(e) => {
+                                      const target = e.target as HTMLImageElement;
+                                      target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                                    }}
+                                  />
+                                  <span className="text-white text-sm">{compPlayer.Name}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="p-4 text-center text-gray-400 text-sm">
+                                No other {player.Position}s available for comparison in {getTeamLabel(selectedTeam)}
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {selectedComparison ? (
+                      loadingComparison ? (
+                        <div className="flex items-center justify-center py-12">
+                          <div className="w-8 h-8 border-2 border-red-400 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : selectedComparison.stats ? (
+                        <div className="space-y-6">
+                          {/* Player Comparison Header */}
+                          <div className="grid grid-cols-2 gap-6">
+                            <div className="flex items-center gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
+                              <img
+                                src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
+                                alt={player.Name}
+                                className="w-16 h-16 rounded-lg object-cover object-top"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                                }}
+                              />
+                              <div>
+                                <h4 className="text-lg font-bold text-white">{player.Name}</h4>
+                                <p className="text-sm text-gray-400">{player.Position}</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-4 p-4 bg-black/20 rounded-xl border border-white/5">
+                              <img
+                                src={selectedComparison.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
+                                alt={selectedComparison.Name}
+                                className="w-16 h-16 rounded-lg object-cover object-top"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
+                                }}
+                              />
+                              <div>
+                                <h4 className="text-lg font-bold text-white">{selectedComparison.Name}</h4>
+                                <p className="text-sm text-gray-400">{selectedComparison.Position}</p>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Comparison Stats */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <ComparisonStatCard
+                              icon={Users}
+                              label="Total Games"
+                              playerValue={careerStats.totalGames}
+                              comparisonValue={selectedComparison.stats.totalGames}
+                            />
+                            {player.Position === 'GK' ? (
+                              <ComparisonStatCard
+                                icon={Shield}
+                                label="Clean Sheets"
+                                playerValue={careerStats.totalCleanSheets || 0}
+                                comparisonValue={selectedComparison.stats.totalCleanSheets || 0}
+                                color="text-green-400"
+                              />
+                            ) : (
+                              <ComparisonStatCard
+                                icon={Target}
+                                label="Total Goals"
+                                playerValue={careerStats.totalGoals}
+                                comparisonValue={selectedComparison.stats.totalGoals}
+                                color="text-green-400"
+                              />
+                            )}
+                            <ComparisonStatCard
+                              icon={Activity}
+                              label="Total Assists"
+                              playerValue={careerStats.totalAssists}
+                              comparisonValue={selectedComparison.stats.totalAssists}
+                              color="text-blue-400"
+                            />
+                            <ComparisonStatCard
+                              icon={Award}
+                              label="Total Cards"
+                              playerValue={careerStats.totalCards}
+                              comparisonValue={selectedComparison.stats.totalCards}
+                              color="text-yellow-400"
+                            />
+                            {player.Position !== 'GK' && (
+                              <>
+                                <ComparisonStatCard
+                                  icon={TrendingUp}
+                                  label="Goals per Game"
+                                  playerValue={careerStats.avgGoalsPerGame}
+                                  comparisonValue={selectedComparison.stats.avgGoalsPerGame}
+                                  color="text-green-400"
+                                  format={(val) => val.toFixed(2)}
+                                />
+                                <ComparisonStatCard
+                                  icon={TrendingUp}
+                                  label="Assists per Game"
+                                  playerValue={careerStats.avgAssistsPerGame}
+                                  comparisonValue={selectedComparison.stats.avgAssistsPerGame}
+                                  color="text-blue-400"
+                                  format={(val) => val.toFixed(2)}
+                                />
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ) : null
+                    ) : (
+                      <div className="text-center py-12">
+                        <GitCompare className="w-12 h-12 text-gray-600 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-gray-400 mb-2">Select a player to compare</h3>
+                        <p className="text-gray-500">
+                          Choose another {player.Position} from {getTeamLabel(selectedTeam)} to see detailed comparisons
+                        </p>
+                      </div>
+                    )}
                   </motion.div>
                 )}
               </AnimatePresence>
