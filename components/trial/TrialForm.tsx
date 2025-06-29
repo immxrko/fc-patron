@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState, FormEvent } from 'react'
 import { Calendar } from 'lucide-react'
-import { format, addMonths, eachDayOfInterval, isTuesday, isBefore, startOfToday, isAfter, isSameDay } from 'date-fns'
+import { format, addMonths, eachDayOfInterval, isTuesday, isBefore, startOfToday } from 'date-fns'
 import SubmissionSuccess from './SubmissionSuccess'
 import { supabase } from '../../lib/supabase'
 import { sendPushNotification } from '@/app/actions/notifications'
@@ -46,35 +46,13 @@ export default function TrialForm({ onBack }: TrialFormProps) {
   // Use the later of today or the trial start date
   const startDate = isBefore(today, trialStartDate) ? trialStartDate : today
   
-  // Get all Tuesdays starting from the start date
+  // Get only next 3 Tuesdays starting from August 5th, 2025
   const availableDates = eachDayOfInterval({
     start: startDate,
-    end: addMonths(startDate, 4) // Extended to 4 months to ensure we get enough Tuesdays
+    end: addMonths(startDate, 3) // Extended to 3 months to ensure we get enough Tuesdays
   })
-    .filter(date => {
-      // Must be a Tuesday
-      if (!isTuesday(date)) return false
-      
-      // Must be on or after the start date
-      if (isBefore(date, startDate)) return false
-      
-      // If today is before trial start date, include all dates from trial start date
-      if (isBefore(today, trialStartDate)) {
-        return isAfter(date, trialStartDate) || isSameDay(date, trialStartDate)
-      }
-      
-      // If today is after trial start date, include all dates from today
-      return isAfter(date, today) || isSameDay(date, today)
-    })
+    .filter(date => isTuesday(date) && !isBefore(date, startDate))
     .slice(0, 3)  // Take only the next 3 Tuesdays
-
-  console.log('Debug info:', {
-    today: today.toISOString(),
-    trialStartDate: trialStartDate.toISOString(),
-    startDate: startDate.toISOString(),
-    availableDates: availableDates.map(d => d.toISOString()),
-    isTodayBeforeTrialStart: isBefore(today, trialStartDate)
-  })
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -95,7 +73,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
         full_name: name,
         phone_number: formData.get('phone') as string,
         position: formData.get('position') as string,
-        trial_date: selectedDate.toISOString().split('T')[0], // Use the date as-is
+        trial_date: new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Add 24h before formatting
         last_club: formData.get('lastClub') as string || null
       }
 
@@ -108,7 +86,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
       // Send push notification with Date object
       await sendPushNotification({
         ...formPayload,
-        trial_date: selectedDate
+        trial_date: new Date(selectedDate.getTime() + 24 * 60 * 60 * 1000)
       })
       
       setSubmittedName(name)
@@ -327,15 +305,6 @@ export default function TrialForm({ onBack }: TrialFormProps) {
               </p>
             )}
           </form>
-
-          {/* Debug Info (remove in production) */}
-          {process.env.NODE_ENV === 'development' && (
-            <div className="mt-4 p-3 bg-gray-800/50 rounded-lg text-xs text-gray-400">
-              <p>Debug: Available dates: {availableDates.map(d => format(d, 'MMM d')).join(', ')}</p>
-              <p>Today: {format(today, 'MMM d, yyyy')}</p>
-              <p>Trial start: {format(trialStartDate, 'MMM d, yyyy')}</p>
-            </div>
-          )}
         </motion.div>
       </div>
       
