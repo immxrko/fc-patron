@@ -39,20 +39,25 @@ export default function TrialForm({ onBack }: TrialFormProps) {
     onBack()
   }
 
-  // Set trial start date to August 5th, 2025
-  const trialStartDate = new Date('2025-08-05')
+  // Set trial start date to August 4th, 2025 (for available dates)
+  const trialStartDate = new Date('2025-08-04')
+  // Set display date to August 5th, 2025 (for yellow box display)
+  const displayDate = new Date('2025-08-05')
   const today = startOfToday()
   
-  // Use the later of today or the trial start date
+  // Use the later of today or the trial start date for available dates
   const startDate = isBefore(today, trialStartDate) ? trialStartDate : today
   
-  // Get only next 3 Tuesdays starting from August 5th, 2025
+  // Get only next 3 Tuesdays starting from August 4th, 2025
   const availableDates = eachDayOfInterval({
     start: startDate,
     end: addMonths(startDate, 3) // Extended to 3 months to ensure we get enough Tuesdays
   })
     .filter(date => isTuesday(date) && !isBefore(date, startDate))
     .slice(0, 3)  // Take only the next 3 Tuesdays
+
+  // Show yellow box only if today is before August 4th, 2025
+  const showTrialNotice = isBefore(today, trialStartDate)
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -131,8 +136,8 @@ export default function TrialForm({ onBack }: TrialFormProps) {
           <h2 className="text-2xl md:text-3xl font-bold text-white">Book Your Trial Training</h2>
           <p className="text-white/80 hidden md:block">Fill out the form below and we&apos;ll get back to you shortly.</p>
 
-          {/* Trial Season Notice */}
-          {isBefore(today, trialStartDate) && (
+          {/* Trial Season Notice - Only show before August 4th */}
+          {showTrialNotice && (
             <motion.div
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
@@ -222,7 +227,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
                   <span>
                     {selectedDate 
                       ? format(selectedDate, 'EEEE, MMMM d, yyyy') 
-                      : isBefore(today, trialStartDate)
+                      : showTrialNotice
                         ? 'Select a Tuesday (Starting Aug 5, 2025)'
                         : 'Select a Tuesday'
                     }
@@ -260,8 +265,8 @@ export default function TrialForm({ onBack }: TrialFormProps) {
                     ) : (
                       <div className="px-4 py-3 text-center text-white/60">
                         <p className="text-sm">
-                          {isBefore(today, trialStartDate) 
-                            ? 'Trial dates will be available starting August 5th, 2025'
+                          {showTrialNotice 
+                            ? 'Trial dates will be available starting August 4th, 2025'
                             : 'No trial dates available at the moment'
                           }
                         </p>
@@ -299,7 +304,7 @@ export default function TrialForm({ onBack }: TrialFormProps) {
               {submitting ? 'Submitting...' : 'Submit Request'}
             </button>
 
-            {availableDates.length === 0 && isBefore(today, trialStartDate) && (
+            {availableDates.length === 0 && showTrialNotice && (
               <p className="text-center text-yellow-400/80 text-sm">
                 You can submit your request now and we&apos;ll contact you when trial dates become available.
               </p>
