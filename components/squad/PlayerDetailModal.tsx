@@ -224,39 +224,70 @@ export default function PlayerDetailModal({ player, onClose }: PlayerDetailModal
         >
           {/* Header */}
           <div className="relative p-6 border-b border-white/10">
-            <div className="flex items-center gap-4">
-              {/* Player Image */}
-              <div className="relative w-20 h-20 md:w-24 md:h-24 flex-shrink-0">
+            <div className="flex items-center gap-6">
+              {/* Player Image - Made Much Bigger */}
+              <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
                 <img
                   src={player.BildURL || 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png'}
                   alt={player.Name}
-                  className="w-full h-full object-cover object-top rounded-xl border-2 border-red-500/20"
+                  className="w-full h-full object-cover object-top rounded-2xl border-4 border-red-500/30 shadow-2xl shadow-red-500/20"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
                     target.src = 'https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_640.png';
                   }}
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-xl" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-2xl" />
+                
+                {/* Position Badge on Image */}
+                <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                  <span className="px-4 py-2 bg-red-500 text-white rounded-full text-sm font-bold shadow-lg">
+                    {player.Position}
+                  </span>
+                </div>
               </div>
 
               {/* Player Info */}
               <div className="flex-1 min-w-0">
-                <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">{player.Name}</h2>
-                <div className="flex flex-wrap items-center gap-3">
-                  <span className="px-3 py-1 bg-red-500/20 text-red-400 rounded-full text-sm font-medium">
-                    {player.Position}
-                  </span>
+                <h2 className="text-3xl md:text-4xl font-bold text-white mb-3">{player.Name}</h2>
+                <div className="flex flex-wrap items-center gap-3 mb-4">
                   {getAge() && (
-                    <span className="px-3 py-1 bg-black/20 text-gray-400 rounded-full text-sm">
+                    <span className="px-3 py-1 bg-black/20 text-gray-300 rounded-full text-sm">
                       {getAge()} years old
                     </span>
                   )}
                   {player.KM_Res_Beides && (
-                    <span className="px-3 py-1 bg-black/20 text-gray-400 rounded-full text-sm">
+                    <span className="px-3 py-1 bg-black/20 text-gray-300 rounded-full text-sm">
                       {getTeamLabel(player.KM_Res_Beides)}
                     </span>
                   )}
+                  {player.Fuß && (
+                    <span className="px-3 py-1 bg-black/20 text-gray-300 rounded-full text-sm">
+                      {getFootLabel(player.Fuß)} footed
+                    </span>
+                  )}
                 </div>
+                
+                {/* Quick Stats Preview */}
+                {careerStats && !loading && (
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-white">{careerStats.totalGames}</p>
+                      <p className="text-xs text-gray-400">Games</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-green-400">
+                        {player.Position === 'GK' ? careerStats.totalCleanSheets || 0 : careerStats.totalGoals}
+                      </p>
+                      <p className="text-xs text-gray-400">
+                        {player.Position === 'GK' ? 'Clean Sheets' : 'Goals'}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-blue-400">{careerStats.totalAssists}</p>
+                      <p className="text-xs text-gray-400">Assists</p>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Close Button */}
@@ -269,7 +300,7 @@ export default function PlayerDetailModal({ player, onClose }: PlayerDetailModal
             </div>
 
             {/* Team Selector */}
-            <div className="flex items-center gap-2 mt-4">
+            <div className="flex items-center gap-2 mt-6">
               <span className="text-sm text-gray-400">View stats for:</span>
               <div className="flex gap-2">
                 <button
