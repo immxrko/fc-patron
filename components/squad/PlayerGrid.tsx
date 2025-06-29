@@ -3,6 +3,7 @@
 import { useEffect, useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { supabase } from '@/lib/supabase'
+import PlayerDetailModal from './PlayerDetailModal'
 
 interface Player {
   ID: number
@@ -11,6 +12,8 @@ interface Player {
   Position: string
   BildURL: string
   KM_Res_Beides: string
+  Fuß?: string
+  Geburtsdatum?: string
   // eslint-disable-next-line
   [key: string]: any  // This allows for dynamic season-based stat fields
 }
@@ -24,6 +27,7 @@ interface PlayerGridProps {
 export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }: PlayerGridProps) {
   const [players, setPlayers] = useState<Player[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedPlayer, setSelectedPlayer] = useState<Player | null>(null)
 
   // Wrap seasonToPrefix in useMemo
   const seasonToPrefix = useMemo(() => ({
@@ -188,8 +192,8 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
     ATT: 'Attackers'
   }
 
-                    return (
-                      <>
+  return (
+    <>
       {/* Desktop & Mobile List View */}
       <div className="space-y-6 md:grid md:grid-cols-3 md:gap-6 md:space-y-0">
         {/* GK and DEF Column */}
@@ -214,7 +218,10 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                       key={player.ID}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-3 bg-black/20 rounded-xl backdrop-blur-sm"
+                      className="flex items-center gap-4 p-3 bg-black/20 rounded-xl backdrop-blur-sm cursor-pointer hover:bg-black/30 transition-colors"
+                      onClick={() => setSelectedPlayer(player)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <img
@@ -236,9 +243,9 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                           </h3>
                           <span className="px-2 py-1 bg-black/40 rounded-md text-xs font-bold text-red-400 flex-shrink-0">
                             {player.Position}
-                </span>
-              </div>
-              
+                          </span>
+                        </div>
+                        
                         <div className="flex items-center gap-4 mt-1">
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-semibold text-white">{player.games}</span>
@@ -265,7 +272,7 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                 </div>
               </div>
             ))}
-                  </div>
+        </div>
 
         {/* MID Column */}
         <div className="space-y-6">
@@ -289,7 +296,10 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                       key={player.ID}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-3 bg-black/20 rounded-xl backdrop-blur-sm"
+                      className="flex items-center gap-4 p-3 bg-black/20 rounded-xl backdrop-blur-sm cursor-pointer hover:bg-black/30 transition-colors"
+                      onClick={() => setSelectedPlayer(player)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <img
@@ -302,7 +312,7 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                           }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent rounded-lg" />
-                  </div>
+                      </div>
 
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
@@ -330,7 +340,7 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                             <span className="text-xs text-gray-400">Assists</span>
                           </div>
                         </div>
-                  </div>
+                      </div>
                     </motion.div>
                   ))}
                 </div>
@@ -360,7 +370,10 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                       key={player.ID}
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-4 p-3 bg-black/20 rounded-xl backdrop-blur-sm"
+                      className="flex items-center gap-4 p-3 bg-black/20 rounded-xl backdrop-blur-sm cursor-pointer hover:bg-black/30 transition-colors"
+                      onClick={() => setSelectedPlayer(player)}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
                       <div className="relative w-16 h-16 flex-shrink-0">
                         <img
@@ -399,16 +412,24 @@ export default function PlayerGrid({ searchQuery, selectedTeam, selectedSeason }
                           <div className="flex items-center gap-1">
                             <span className="text-sm font-semibold text-white">{player.assists}</span>
                             <span className="text-xs text-gray-400">Assists</span>
-            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
                   ))}
-          </div>
+                </div>
+              </div>
+            ))}
         </div>
-      ))}
-    </div>
       </div>
+
+      {/* Player Detail Modal */}
+      {selectedPlayer && (
+        <PlayerDetailModal
+          player={selectedPlayer}
+          onClose={() => setSelectedPlayer(null)}
+        />
+      )}
     </>
   )
-} 
+}
